@@ -132,12 +132,12 @@ public class ClusterService implements IAmorphousCluster {
 
 	@Override
 	public void processClusterMessage(String NodeAddress, ClusterMessage msg) {
-		
-		ClusterService.logger.debug("Node " + this.NodeId + " (me) now processing packet from node " + msg.NodeID + "(" + NodeAddress + ")");
-		
+				
 		// Only process packets that don't come from me
 		if(!msg.NodeID.equals(this.NodeId)){
-						
+		
+			ClusterService.logger.debug("Processing packet from node " + msg.NodeID + "(" + NodeAddress + ")");
+			
 			switch (msg.type) {
 				case CommunicationProtocol.JOIN_CLUSTER:
 					try {

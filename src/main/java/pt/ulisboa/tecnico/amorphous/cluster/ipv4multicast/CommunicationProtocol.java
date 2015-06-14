@@ -8,6 +8,8 @@ import pt.ulisboa.tecnico.amorphous.cluster.messages.NewOFSwitchConnection;
 public class CommunicationProtocol {
 
 	public static final String FIELD_DELIMITER = "|";
+	public static final String FIELD_DELIMITER_REGEX = "\\|";
+	
 	public static final int JOIN_CLUSTER = 1;
 	public static final int LEAVE_CLUSTER = 2;
 	public static final int NEW_OF_CONNECTION = 3;
@@ -62,7 +64,7 @@ public class CommunicationProtocol {
 	}
 	
 	public static ClusterMessage getMessage(String receivedMsg){
-		String[] msgFields = receivedMsg.split(CommunicationProtocol.FIELD_DELIMITER);
+		String[] msgFields = receivedMsg.split(CommunicationProtocol.FIELD_DELIMITER_REGEX);
 		
 		ClusterMessage msg = null;
 		
