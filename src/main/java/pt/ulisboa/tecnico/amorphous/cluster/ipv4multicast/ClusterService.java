@@ -1,6 +1,5 @@
 package pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Set;

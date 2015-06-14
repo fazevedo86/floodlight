@@ -69,7 +69,7 @@ public class Amorphous implements IFloodlightModule {
 		}
 		
 		// Log
-		Amorphous.logger.info("Initializing local Amorphous node (" + this.syncService.getLocalNodeId() + ")");
+		Amorphous.logger.info("Initializing local Amorphous node (" + this.amorphcluster.getNodeId() + ")");
 	}
 
 	@Override

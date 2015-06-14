@@ -48,10 +48,5 @@ public class ClusterNode {
 	public String getNodeID(){
 		return this.nodeId;
 	}
-	
-	@Override
-	public boolean equals(Object obj){
-		return (obj instanceof ClusterListner && ((ClusterNode)obj).getNodeIP().equals(this.ip));
-	}
 
 }
