@@ -1,8 +1,12 @@
 package pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast;
 
+import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.slf4j.Logger;
@@ -24,7 +28,7 @@ public class ClusterService implements IAmorphousCluster {
 	public final String NodeId;
 	protected final ClusterListner listner;
 	protected final ClusterCommunicator sender;
-	protected ConcurrentSkipListSet<ClusterNode> nodes;
+	protected ConcurrentMap<InetAddress,ClusterNode> nodes;
 	
 	public static IAmorphousCluster getInstance(){
 		return ClusterService.instance;
@@ -47,7 +51,7 @@ public class ClusterService implements IAmorphousCluster {
 			}
 		}
 		// Initialize the cluster node set
-		this.nodes = new ConcurrentSkipListSet<ClusterNode>();
+		this.nodes = new ConcurrentHashMap<InetAddress,ClusterNode>();
 		
 		this.NodeId = NodeId;
 	}
@@ -89,7 +93,7 @@ public class ClusterService implements IAmorphousCluster {
 	
 	@Override
 	public boolean addClusterNode(ClusterNode node) {
-		this.nodes.add(node);
+		this.nodes.put(node.getNodeIP(), node);
 		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
 		
 		return this.isClusterNode(node);
@@ -97,19 +101,24 @@ public class ClusterService implements IAmorphousCluster {
 
 	@Override
 	public boolean removeClusterNode(ClusterNode node) {
-		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") removed!");
+		if(this.isClusterNode(node)){
+			ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") removed!");
+			return true;
+		}
 		
-		return this.nodes.remove(node);
+		ClusterService.logger.debug("Attempted to remove unregistered node " + node.getNodeID() + "(" + node.getNodeIP() + ")");
+		
+		return false;
 	}
 
 	@Override
 	public boolean isClusterNode(ClusterNode node) {
-		return this.nodes.contains(node);
+		return this.nodes.containsKey(node.getNodeIP());
 	}
 
 	@Override
-	public Set<ClusterNode> getClusterNodes() {
-		return Collections.unmodifiableSet(this.nodes);
+	public Collection<ClusterNode> getClusterNodes() {
+		return Collections.unmodifiableCollection(this.nodes.values());
 	}
 
 	
@@ -124,7 +133,7 @@ public class ClusterService implements IAmorphousCluster {
 	@Override
 	public void processClusterMessage(String NodeAddress, ClusterMessage msg) {
 		// Only process packets that don't come from me
-		if(msg.NodeID != this.NodeId){
+		if(!msg.NodeID.equals(this.NodeId)){
 			
 			ClusterService.logger.debug("Processing new " + msg.getClass().toString() + " packet from " + NodeAddress);
 			

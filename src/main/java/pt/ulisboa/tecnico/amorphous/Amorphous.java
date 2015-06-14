@@ -60,9 +60,7 @@ public class Amorphous implements IFloodlightModule {
 		
 		// Create a new amorphous cluster class
 		try {
-			
 			this.amorphcluster = new ClusterService(UUID.randomUUID().toString(), this.config.get("group"), Integer.valueOf(this.config.get("port")));
-			
 		} catch (NumberFormatException | UnknownHostException | InstantiationException e) {
 			Amorphous.logger.error(e.getClass().getName() + ": " + e.getMessage());
 			throw new FloodlightModuleException(e.getClass().getName() + ": " + e.getMessage());

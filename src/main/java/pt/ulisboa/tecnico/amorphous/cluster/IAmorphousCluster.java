@@ -1,6 +1,6 @@
 package pt.ulisboa.tecnico.amorphous.cluster;
 
-import java.util.Set;
+import java.util.Collection;
 
 import pt.ulisboa.tecnico.amorphous.cluster.messages.ClusterMessage;
 
@@ -26,7 +26,7 @@ public interface IAmorphousCluster {
 	
 	public boolean isClusterNode(ClusterNode node);
 	
-	public Set<ClusterNode> getClusterNodes();
+	public Collection<ClusterNode> getClusterNodes();
 	
 	
 	/*** Message handling ***/

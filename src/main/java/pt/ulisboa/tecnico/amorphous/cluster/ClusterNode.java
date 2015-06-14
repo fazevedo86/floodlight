@@ -6,8 +6,6 @@ import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast.ClusterListner;
-
 public class ClusterNode {
 	
 	protected static final Logger logger = LoggerFactory.getLogger(ClusterNode.class);
