@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast;
 
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.Set;
@@ -90,12 +91,15 @@ public class ClusterService implements IAmorphousCluster {
 	@Override
 	public boolean addClusterNode(ClusterNode node) {
 		this.nodes.add(node);
+		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
 		
 		return this.isClusterNode(node);
 	}
 
 	@Override
 	public boolean removeClusterNode(ClusterNode node) {
+		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") removed!");
+		
 		return this.nodes.remove(node);
 	}
 
@@ -120,32 +124,38 @@ public class ClusterService implements IAmorphousCluster {
 
 	@Override
 	public void processClusterMessage(String NodeAddress, ClusterMessage msg) {
-		switch (msg.type) {
-			case CommunicationProtocol.JOIN_CLUSTER:
-				try {
-					this.addClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
-				} catch (UnknownHostException e) {
-					ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
-					ClusterService.logger.error(e.getStackTrace().toString());
-				}
-				break;
-				
-			case CommunicationProtocol.LEAVE_CLUSTER:
-				try {
-					this.removeClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
-				} catch (UnknownHostException e) {
-					ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
-					ClusterService.logger.error(e.getStackTrace().toString());
-				}
-				break;
-				
-			case CommunicationProtocol.NEW_OF_CONNECTION:
-				NewOFSwitchConnection newofmsg = (NewOFSwitchConnection)msg;
-				// ToDo: Handle new OF switch connection on remote node
-				break;
-	
-			default:
-				break;
+		// Only process packets that don't come from me
+		if(msg.NodeID != this.NodeId){
+			
+			ClusterService.logger.debug("Processing new " + msg.getClass().toString() + " packet from " + NodeAddress);
+			
+			switch (msg.type) {
+				case CommunicationProtocol.JOIN_CLUSTER:
+					try {
+						this.addClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
+					} catch (UnknownHostException e) {
+						ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
+						ClusterService.logger.error(e.getStackTrace().toString());
+					}
+					break;
+					
+				case CommunicationProtocol.LEAVE_CLUSTER:
+					try {
+						this.removeClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
+					} catch (UnknownHostException e) {
+						ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
+						ClusterService.logger.error(e.getStackTrace().toString());
+					}
+					break;
+					
+				case CommunicationProtocol.NEW_OF_CONNECTION:
+					NewOFSwitchConnection newofmsg = (NewOFSwitchConnection)msg;
+					// ToDo: Handle new OF switch connection on remote node
+					break;
+		
+				default:
+					break;
+			}
 		}
 	}
 

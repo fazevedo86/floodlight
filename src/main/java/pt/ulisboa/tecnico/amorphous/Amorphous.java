@@ -4,6 +4,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
+import java.util.UUID;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -60,7 +61,7 @@ public class Amorphous implements IFloodlightModule {
 		// Create a new amorphous cluster class
 		try {
 			
-			this.amorphcluster = new ClusterService(Short.toString(this.syncService.getLocalNodeId()), this.config.get("group"), Integer.valueOf(this.config.get("port")));
+			this.amorphcluster = new ClusterService(UUID.randomUUID().toString(), this.config.get("group"), Integer.valueOf(this.config.get("port")));
 			
 		} catch (NumberFormatException | UnknownHostException | InstantiationException e) {
 			Amorphous.logger.error(e.getClass().getName() + ": " + e.getMessage());

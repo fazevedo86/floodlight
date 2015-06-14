@@ -79,7 +79,7 @@ public class ClusterListner extends Thread {
 		
 		// While the server is running listen for incoming packets
 		while(this.isListening()){
-			inputBuffer = new byte[1500]; // MAX standard MTU
+			inputBuffer = new byte[1500]; // standard MTU
 			rcvPacket = new DatagramPacket(inputBuffer, inputBuffer.length);
 			try {
 				this.srvMcastSocket.receive(rcvPacket);
