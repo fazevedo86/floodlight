@@ -1,10 +1,9 @@
 package pt.ulisboa.tecnico.amorphous;
 
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -15,16 +14,16 @@ import org.sdnplatform.sync.ISyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.ulisboa.tecnico.amorphous.cluster.ClusterListner;
-import pt.ulisboa.tecnico.amorphous.cluster.ClusterNode;
+import pt.ulisboa.tecnico.amorphous.cluster.IAmorphousCluster;
+import pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast.ClusterService;
+
 
 public class Amorphous implements IFloodlightModule {
 
 	protected static final Logger logger = LoggerFactory.getLogger(Amorphous.class);
 	protected Map<String, String> config;
 	protected ISyncService syncService;
-	protected Set<ClusterNode> nodes;
-	protected ClusterListner listner;
+	protected IAmorphousCluster amorphcluster;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -55,20 +54,26 @@ public class Amorphous implements IFloodlightModule {
 		this.config = context.getConfigParams(this);
 		Amorphous.logger.debug("Initializing Amourphous with config: " + this.config.toString());
 		
-		// Initialize the cluster node set
-		this.nodes = new ConcurrentSkipListSet<ClusterNode>();
-		
 		// Get the sync service
 		this.syncService = context.getServiceImpl(ISyncService.class);
 		
+		// Create a new amorphous cluster class
+		try {
+			
+			this.amorphcluster = new ClusterService(Short.toString(this.syncService.getLocalNodeId()), this.config.get("group"), Integer.valueOf(this.config.get("port")));
+			
+		} catch (NumberFormatException | UnknownHostException | InstantiationException e) {
+			Amorphous.logger.error(e.getClass().getName() + ": " + e.getMessage());
+			throw new FloodlightModuleException(e.getClass().getName() + ": " + e.getMessage());
+		}
+		
 		// Log
 		Amorphous.logger.info("Initializing local Amorphous node (" + this.syncService.getLocalNodeId() + ")");
-
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
+		this.amorphcluster.startClusterService();
 	}
 
 }

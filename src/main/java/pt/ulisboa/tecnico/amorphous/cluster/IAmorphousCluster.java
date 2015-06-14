@@ -1,9 +1,38 @@
 package pt.ulisboa.tecnico.amorphous.cluster;
 
+import java.util.Set;
+
+import pt.ulisboa.tecnico.amorphous.cluster.messages.ClusterMessage;
+
 public interface IAmorphousCluster {
+
 	
-	public abstract boolean startCluster();
+	/*** Cluster Management ***/
+
+	public boolean startClusterService();
 	
-	public abstract boolean stopCluster();
+	public boolean stopClusterService();
+	
+	public boolean isClusterServiceRunning();
+	
+	public String getNodeId();
+	
+	
+	/*** Node Management ***/
+	
+	public boolean addClusterNode(ClusterNode node);
+	
+	public boolean removeClusterNode(ClusterNode node);
+	
+	public boolean isClusterNode(ClusterNode node);
+	
+	public Set<ClusterNode> getClusterNodes();
+	
+	
+	/*** Message handling ***/
+	
+	public void notifyClusterMembers(ClusterMessage msg);
+	
+	public void processClusterMessage(String NodeAddress, ClusterMessage msg);
 	
 }
