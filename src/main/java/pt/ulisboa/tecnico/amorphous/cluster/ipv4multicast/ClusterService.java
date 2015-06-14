@@ -4,10 +4,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,15 +98,15 @@ public class ClusterService implements IAmorphousCluster {
 	}
 
 	@Override
-	public boolean removeClusterNode(ClusterNode node) {
-		if(this.isClusterNode(node)){
-			ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") removed!");
-			return true;
+	public boolean removeClusterNode(ClusterNode node) {		
+		if(this.nodes.remove(node.getNodeIP()) == null){
+			ClusterService.logger.debug("Attempted to remove unregistered node " + node.getNodeID() + "(" + node.getNodeIP() + ")");
+			return false;
 		}
 		
-		ClusterService.logger.debug("Attempted to remove unregistered node " + node.getNodeID() + "(" + node.getNodeIP() + ")");
+		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") removed!");
 		
-		return false;
+		return true;
 	}
 
 	@Override
@@ -138,23 +136,27 @@ public class ClusterService implements IAmorphousCluster {
 		
 			ClusterService.logger.debug("Processing packet from node " + msg.NodeID + "(" + NodeAddress + ")");
 			
+			ClusterNode origin = null;
+			
+			try {
+				origin = new ClusterNode(NodeAddress, msg.NodeID);
+			} catch (UnknownHostException e) {
+				ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
+				ClusterService.logger.error(e.getStackTrace().toString());
+			}
+			
 			switch (msg.type) {
 				case CommunicationProtocol.JOIN_CLUSTER:
-					try {
-						this.addClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
-					} catch (UnknownHostException e) {
-						ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
-						ClusterService.logger.error(e.getStackTrace().toString());
+					if(this.isClusterNode(origin)){
+						ClusterService.logger.info("Node " + msg.NodeID + "(" + NodeAddress + ") rejoined!");
+						this.removeClusterNode(origin);
 					}
+						
+					this.addClusterNode(origin);
 					break;
 					
 				case CommunicationProtocol.LEAVE_CLUSTER:
-					try {
-						this.removeClusterNode(new ClusterNode(NodeAddress, msg.NodeID));
-					} catch (UnknownHostException e) {
-						ClusterService.logger.error("Failed to instantiate node {NodeAddress=" + NodeAddress + ", NodeId=" + msg.NodeID + "}");
-						ClusterService.logger.error(e.getStackTrace().toString());
-					}
+					this.removeClusterNode(origin);
 					break;
 					
 				case CommunicationProtocol.NEW_OF_CONNECTION:
