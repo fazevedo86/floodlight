@@ -54,6 +54,7 @@ public class ClusterService implements IAmorphousClusterService {
 	@Override
 	public boolean startClusterService() {
 		if(!this.isClusterServiceRunning()){
+			this.clusterComm.initCommunications();
 			this.clusterComm.sendMessage(new JoinClusterMessage(ClusterService.getInstance().getNodeId()));
 		}
 		return false;
@@ -61,8 +62,9 @@ public class ClusterService implements IAmorphousClusterService {
 
 	@Override
 	public boolean stopClusterService() {
-		if(this.clusterComm.stopCommunications()){
+		if(this.isClusterServiceRunning()){
 			this.clusterComm.sendMessage(new LeaveClusterMessage(ClusterService.getInstance().getNodeId()));
+			this.clusterComm.stopCommunications();
 			return true;
 		}
 		return false;
