@@ -15,8 +15,8 @@ import org.sdnplatform.sync.ISyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.ulisboa.tecnico.amorphous.cluster.IAmorphousCluster;
-import pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast.ClusterService;
+import pt.ulisboa.tecnico.amorphous.cluster.ClusterService;
+import pt.ulisboa.tecnico.amorphous.cluster.IAmorphousClusterService;
 
 
 public class Amorphous implements IFloodlightModule {
@@ -24,7 +24,7 @@ public class Amorphous implements IFloodlightModule {
 	protected static final Logger logger = LoggerFactory.getLogger(Amorphous.class);
 	protected Map<String, String> config;
 	protected ISyncService syncService;
-	protected IAmorphousCluster amorphcluster;
+	protected IAmorphousClusterService amorphcluster;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {

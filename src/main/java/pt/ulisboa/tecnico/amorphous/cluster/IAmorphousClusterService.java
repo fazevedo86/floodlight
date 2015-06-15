@@ -1,10 +1,11 @@
 package pt.ulisboa.tecnico.amorphous.cluster;
 
+import java.net.InetAddress;
 import java.util.Collection;
 
 import pt.ulisboa.tecnico.amorphous.cluster.messages.ClusterMessage;
 
-public interface IAmorphousCluster {
+public interface IAmorphousClusterService {
 
 	
 	/*** Cluster Management ***/
@@ -28,11 +29,13 @@ public interface IAmorphousCluster {
 	
 	public Collection<ClusterNode> getClusterNodes();
 	
+	public void syncNode(ClusterNode node);
+	
 	
 	/*** Message handling ***/
 	
 	public void notifyClusterMembers(ClusterMessage msg);
 	
-	public void processClusterMessage(String NodeAddress, ClusterMessage msg);
+	public void processClusterMessage(InetAddress NodeAddress, ClusterMessage msg);
 	
 }

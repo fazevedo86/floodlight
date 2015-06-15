@@ -1,134 +1,143 @@
 package pt.ulisboa.tecnico.amorphous.cluster.ipv4multicast;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.net.MulticastSocket;
 import java.net.UnknownHostException;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.ulisboa.tecnico.amorphous.cluster.ClusterNode;
+import pt.ulisboa.tecnico.amorphous.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.cluster.messages.ClusterMessage;
-import pt.ulisboa.tecnico.amorphous.cluster.messages.JoinClusterMessage;
-import pt.ulisboa.tecnico.amorphous.cluster.messages.LeaveClusterMessage;
 
 public class ClusterCommunicator extends Thread {
-
-	protected static final Logger logger = LoggerFactory.getLogger(ClusterCommunicator.class);
 	
-	protected final int ttl;
+	class InboundMessage {
+		public InetAddress origin;
+		public ClusterMessage msg;
+		
+		public InboundMessage(InetAddress origin, ClusterMessage msg){
+			this.origin = origin;
+			this.msg = msg;
+		}
+	}
+	
+	protected static final Logger logger = LoggerFactory.getLogger(ClusterCommunicator.class);
+	private static volatile ClusterCommunicator instance = null;
+
+	public static final String LOCAL_MCAST_GROUP = "224.0.0.1";
+	public static final int MIN_PORT = 1025;
+	public static final int MAX_PORT = 65534;
+
+	protected final InboundSocket inSocket;
+	protected final OutboundSocket outSocket;
 	protected final InetAddress localmcastGroup;
 	protected final InetAddress mcastGroup;
-	protected final int dstPort;
-	protected MulticastSocket srvMcastSocket = null;
-	protected volatile AtomicBoolean isRunning;
-	protected volatile ConcurrentLinkedQueue<String> messages;
+	protected final int clusterPort;
+	protected volatile Queue<InboundMessage> inboundImportantMsgs;
+	protected volatile Queue<InboundMessage> inboundNormalMsgs;
 	
-	public ClusterCommunicator(String mcastGroupIP, int Port) throws UnknownHostException {
-		if(Port < ClusterService.MIN_PORT || Port > ClusterService.MAX_PORT){
-			throw new UnknownHostException("Invalid port was specified for multicast group " + mcastGroupIP + ": " + Port);
-		}
-		
-		this.mcastGroup = InetAddress.getByName(mcastGroupIP);
-		this.localmcastGroup = InetAddress.getByName(ClusterService.LOCAL_MCAST_GROUP);
-		this.dstPort = Port;
-		this.ttl = 255;
-
-		this.isRunning = new AtomicBoolean(false);
-		this.messages = new ConcurrentLinkedQueue<String>();
+	
+	public static ClusterCommunicator getInstance(){
+		return ClusterCommunicator.instance;
 	}
 	
-	public synchronized boolean startCommunicator() {
-		if(this.isRunning.compareAndSet(false, true)) {
-			if(this.srvMcastSocket == null){
-				try {
-					this.srvMcastSocket = new MulticastSocket(this.dstPort - 1);
-					this.srvMcastSocket.setTimeToLive(255);
-				} catch (IOException e) {
-					ClusterListner.logger.error("Error starting Amorphous Cluster Communicator for group " + this.mcastGroup.getHostAddress() + ": " + e.getMessage());
-					this.isRunning.set(false);
+	public ClusterCommunicator() throws InstantiationException {
+		throw new InstantiationException("An error occurred while creating an instance of " + ClusterCommunicator.class.toString() + ": Please use a constructor with an apropriate amount of arguments.");
+	}
+	
+	public ClusterCommunicator(String mcastGroupIP, int Port) throws UnknownHostException, InstantiationException {
+		synchronized(ClusterCommunicator.class){
+			if(ClusterCommunicator.instance == null){
+				if(Port < ClusterCommunicator.MIN_PORT || Port > ClusterCommunicator.MAX_PORT){
+					throw new UnknownHostException("Invalid port was specified for multicast group " + mcastGroupIP + ": " + Port);
 				}
+				this.clusterPort = Port;
+				this.mcastGroup = InetAddress.getByName(mcastGroupIP);
+				this.localmcastGroup = InetAddress.getByName(ClusterCommunicator.LOCAL_MCAST_GROUP);
+				
+				ClusterCommunicator.instance = this;
+			} else {
+				throw new InstantiationException("An error occurred while creating an instance of " + ClusterCommunicator.class.toString() + ": An instance already exists.");
 			}
-			this.sendMessage(new JoinClusterMessage(ClusterService.getInstance().getNodeId()));
 		}
+		this.inSocket = new InboundSocket();
+		this.outSocket = new OutboundSocket();
 		
-		return this.isRunning.get();
+		this.inboundImportantMsgs = new ConcurrentLinkedQueue<InboundMessage>();
+		this.inboundNormalMsgs = new ConcurrentLinkedQueue<InboundMessage>();
 	}
 	
-	public synchronized boolean stopCommunicator() {
-		if(this.isRunning.get()){
-			this.sendMessage(new LeaveClusterMessage(ClusterService.getInstance().getNodeId()));
-			this.isRunning.set(false);
-			
+	public boolean initCommunications() {
+		// Boot the multicast group listner
+		if( this.inSocket.startSocket() && this.outSocket.startSocket() ){
+			this.inSocket.start();
+			this.outSocket.start();
+			this.start();
 			return true;
-		} else {
-			return false;
 		}
+		return false;
 	}
 	
-	public synchronized boolean isCommunicating() {
-		return this.isRunning.get();
+	public boolean stopCommunications() {
+		// Boot the multicast group listner
+		return this.inSocket.stopSocket() && this.outSocket.stopSocket();
 	}
-
-	public boolean sendMessage(ClusterMessage msg){
-		return this.messages.add(CommunicationProtocol.getFormatedMessage(msg));
+	
+	public boolean isCommunicationActive(){
+		return this.inSocket.isActive() || this.outSocket.isActive() || !this.inboundImportantMsgs.isEmpty() || !this.inboundNormalMsgs.isEmpty();
+	}
+	
+	public int getClusterPort(){
+		return this.clusterPort;
+	}
+	
+	public InetAddress getGlobalMulticastGroup(){
+		return this.mcastGroup;
+	}
+	
+	public InetAddress getLocalMulticastGroup(){
+		return this.localmcastGroup;
+	}
+	
+	public void sendMessage(ClusterMessage msg){
+		if(msg.important)
+			this.outSocket.sendImportantMessage(msg);
+		else
+			this.outSocket.sendNormalMessage(msg);
+	}
+	
+	public void sendMessage(ClusterNode node, ClusterMessage msg){
+		if(msg.important)
+			this.outSocket.sendImportantMessage(node,msg);
+		else
+			this.outSocket.sendNormalMessage(node,msg);
+	}
+	
+	public void registerInboundMessage(InetAddress originNodeAddress,ClusterMessage inMsg){
+		InboundMessage inmsg = new InboundMessage(originNodeAddress, inMsg);
+		if(inMsg.important)
+			this.inboundImportantMsgs.add(inmsg);
+		else
+			this.inboundNormalMsgs.add(inmsg);
 	}
 	
 	@Override
-	public void run(){
-		if(!this.isCommunicating() && !this.startCommunicator()){
-			return;
-		}
-		
-		ClusterListner.logger.info("Started communicating to Amorphous cluster " + this.mcastGroup.getHostAddress() + " on port " + this.dstPort);
-		
-		DatagramPacket mcastPacket = null;
-		String msg = null;
-		byte[] outputBuffer = null;
-		
-		while(this.isCommunicating() || !this.messages.isEmpty()){
-			
-			// Wait for it...
-			while(this.messages.isEmpty()) {
-				try {
-					sleep(500);
-				} catch (InterruptedException e) {
-					ClusterCommunicator.logger.error(e.getMessage());
-				}
+	public void run() {
+		while(this.isCommunicationActive()){
+			// Important messages first
+			while(!this.inboundImportantMsgs.isEmpty()){
+				InboundMessage inmsg = this.inboundImportantMsgs.poll();
+				ClusterService.getInstance().processClusterMessage(inmsg.origin, inmsg.msg);
 			}
-			
-			// Cleanup
-			mcastPacket = null;
-			msg = null;
-			outputBuffer = null;
-			
-			// Packet content
-			msg = this.messages.poll();
-			outputBuffer = msg.getBytes();
-			
-			// Create the packet
-			mcastPacket = new DatagramPacket(outputBuffer, outputBuffer.length, this.localmcastGroup, this.dstPort);
-			
-			// Send the packet
-			try {
-				// Send it locally	
-				this.srvMcastSocket.send(mcastPacket);
-				
-				// Send it away
-				mcastPacket.setAddress(this.mcastGroup);
-				this.srvMcastSocket.send(mcastPacket);
-				
-				ClusterCommunicator.logger.debug("ClusterMessage sent: \"" + msg + "\"");
-			} catch (IOException e) {
-				ClusterCommunicator.logger.error("Caught an exception while trying to send the message \"" + msg + "\" to the Amorphous group: " + e.getMessage());
+			// Important messages always first
+			while(!this.inboundNormalMsgs.isEmpty() && this.inboundImportantMsgs.isEmpty()){
+				InboundMessage inmsg = this.inboundNormalMsgs.poll();
+				ClusterService.getInstance().processClusterMessage(inmsg.origin, inmsg.msg);
 			}
-			
 		}
-		
-		this.srvMcastSocket.close();
 	}
-	
+
 }
