@@ -1,4 +1,9 @@
-package pt.ulisboa.tecnico.amorphous.cluster;
+/**
+ * @author filipe.azevedo@tecnico.ulisboa.pt
+ * Instituto Superior Tecnico - 2015
+ */
+
+package pt.ulisboa.tecnico.amorphous.internal.cluster;
 
 import java.net.InetAddress;
 
@@ -9,8 +14,8 @@ public class ClusterNode {
 	
 	protected static final Logger logger = LoggerFactory.getLogger(ClusterNode.class);
 	
-	protected final InetAddress ip;
-	protected final String nodeId;
+	private final InetAddress ip;
+	private final String nodeId;
 	
 	public ClusterNode(InetAddress IPAddress, String nodeId) {
 		this.ip = IPAddress;
