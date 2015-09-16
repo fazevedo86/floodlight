@@ -110,6 +110,10 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.ulisboa.tecnico.amorphous.Amorphous;
+import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService;
+import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
+
 /**
  * This class sends out LLDP messages containing the sending switch's datapath
  * id as well as the outgoing port number. Received LLrescDP messages that match
@@ -163,6 +167,10 @@ IFloodlightModule, IInfoProvider {
 	protected IDebugCounterService debugCounterService;
 	protected IDebugEventService debugEventService;
 	protected IShutdownService shutdownService;
+	
+	// FA 
+	protected IAmorphTopologyManagerService amorphTopologyManagerService;
+	protected IAmorphTopologyService amorphTopologyService;
 
 	// Role
 	protected HARole role;
@@ -651,7 +659,8 @@ IFloodlightModule, IInfoProvider {
 
 		OFPort remotePort = OFPort.of(portBB.getShort());
 		IOFSwitch remoteSwitch = null;
-
+		DatapathId remoteSwitchDP = null;
+		
 		// Verify this LLDP packet matches what we're looking for
 		for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
 			if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -660,6 +669,7 @@ IFloodlightModule, IInfoProvider {
 					&& lldptlv.getValue()[2] == (byte) 0xe1
 					&& lldptlv.getValue()[3] == 0x0) {
 				ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
+				remoteSwitchDP = DatapathId.of(dpidBB.getLong(4));
 				remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
 				otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
@@ -682,6 +692,23 @@ IFloodlightModule, IInfoProvider {
 					log.trace("Got a standard LLDP=[{}] that was not sent by" +
 							" this controller. Not fowarding it.", lldp.toString());
 				}
+
+				// FA
+				if(remoteSwitchDP != null){
+					Link discoveredLink = new Link(sw,inPort,remoteSwitchDP,remotePort);
+					
+					// Require the remote switch to already be registered
+					if(this.amorphTopologyService.isSwitchRegistered(remoteSwitchDP)){
+						// Require the link to not be registered yet
+						if(!this.amorphTopologyService.isSwitchLinkRegistered(discoveredLink)){
+							log.info("Inter-switch link detected: Link [local src=" + sw + " local Port=" + inPort + ", dst=" + remoteSwitchDP + ", remote Port=" + remotePort + "]");
+							this.amorphTopologyManagerService.addLocalSwitchLink(new Link(sw,inPort,remoteSwitchDP,remotePort));
+						}
+					} else {
+						log.error("LLDP detected another switch, but no controller affinity has been set for said switch! (dpid=" + remoteSwitchDP + ")");
+					}
+				}
+				
 				return Command.STOP;
 			} else if (myId < otherId) {
 				if (log.isTraceEnabled()) {
@@ -1893,6 +1920,11 @@ IFloodlightModule, IInfoProvider {
 		l.add(IThreadPoolService.class);
 		l.add(IRestApiService.class);
 		l.add(IShutdownService.class);
+		
+		// FA
+		l.add(IAmorphTopologyManagerService.class);
+		l.add(IAmorphTopologyService.class);
+		
 		return l;
 	}
 
@@ -1907,6 +1939,10 @@ IFloodlightModule, IInfoProvider {
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
 		debugEventService = context.getServiceImpl(IDebugEventService.class);
 		shutdownService = context.getServiceImpl(IShutdownService.class);
+		
+		// FA
+		amorphTopologyManagerService = context.getServiceImpl(IAmorphTopologyManagerService.class);
+		amorphTopologyService = context.getServiceImpl(IAmorphTopologyService.class);
 
 		// read our config options
 		Map<String, String> configOptions = context.getConfigParams(this);

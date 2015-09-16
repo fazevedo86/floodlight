@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -37,9 +38,10 @@ import pt.ulisboa.tecnico.amorphous.IAmorphTopologyListner;
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService.UpdateSource;
+import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
-import pt.ulisboa.tecnico.amorphous.types.NetworkNode.NodeType;
+import pt.ulisboa.tecnico.amorphous.types.NetworkNode.NetworkNodeType;
 
 public class LocalStateService implements IAmorphTopologyService, IAmorphTopologyManagerService {
 	
@@ -94,7 +96,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	@Override
 	public boolean isSwitchRegistered(DatapathId OFSwitchId){
-		return this.isSwitchRegistered(new NetworkNode(OFSwitchId.getLong(),NodeType.OFSWITCH));
+		return this.isSwitchRegistered(new NetworkNode(OFSwitchId.getLong(),NetworkNodeType.OFSWITCH));
 	}
 	
 	@Override
@@ -105,8 +107,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	@Override
 	public boolean isSwitchLinkRegistered(Link link){
 		try{
-			return this.isSwitchLinkRegistered(link.getSrc().getLong(), this.switchService.getSwitch(link.getSrc()).getPort(link.getSrcPort()).getName(), 
-				link.getDst().getLong(), this.switchService.getSwitch(link.getDst()).getPort(link.getDstPort()).getName());
+			return this.isSwitchLinkRegistered(link.getSrc().getLong(), link.getSrcPort().getPortNumber(), link.getDst().getLong(), link.getDstPort().getPortNumber());
 		} catch(NullPointerException npe){
 			LocalStateService.logger.error("Tried to acceess the SwitchService through a null reference!");
 			return false;
@@ -114,8 +115,8 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	@Override
-	public boolean isSwitchLinkRegistered(Long srcId, String srcPortName, Long dstId, String dstPortName){
-		NetworkLink link = new NetworkLink(srcId, dstId, srcPortName, 0, dstPortName, 0, 0L);
+	public boolean isSwitchLinkRegistered(Long srcId, Integer srcPortNumber, Long dstId, Integer dstPortNumber){
+		NetworkLink link = new NetworkLink(srcId, srcPortNumber, dstId, dstPortNumber, 0L);
 		return this.networkGraph.containsEdge(link);
 	}
 	
@@ -141,7 +142,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	@Override
 	public boolean addLocalSwitch(DatapathId switchId){
-		NetworkNode node = new NetworkNode(switchId.getLong(), NodeType.OFSWITCH);
+		NetworkNode node = new NetworkNode(switchId.getLong(), NetworkNodeType.OFSWITCH);
 		
 		// Assume that if we get a new local registration then it's best to delete the switch beforehand
 		if(this.isSwitchRegistered(node)){
@@ -155,6 +156,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			for(IAmorphTopologyListner eventListner : this.localEventListeners)
 				eventListner.switchAdded(switchId);
 			
+			this.printNetworkGraph();
 			return true;
 		}
 		
@@ -175,6 +177,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 				eventListner.switchAdded(DatapathId.of(node.getNodeId()));
 			
+			this.printNetworkGraph();
 			return true;
 		}
 		
@@ -184,16 +187,17 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	@Override
 	public boolean removeLocalSwitch(DatapathId switchId){
-		NetworkNode node = new NetworkNode(switchId.getLong(), NodeType.OFSWITCH);
+		NetworkNode node = new NetworkNode(switchId.getLong(), NetworkNodeType.OFSWITCH);
 		if(this.localSwitches.containsKey(node)){
 			this.removeSwitchHosts(node);
-			this.localSwitches.remove(switchId);
+			this.localSwitches.remove(node);
 			this.networkGraph.removeVertex(node);
 			
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.localEventListeners)
 				eventListner.switchRemoved(switchId);
 			
+			this.printNetworkGraph();
 			return true;
 		}
 		
@@ -211,6 +215,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 				eventListner.switchRemoved(DatapathId.of(node.getNodeId()));
 			
+			this.printNetworkGraph();
 			return true;
 		}
 		
@@ -223,49 +228,58 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	private void removeSwitchHosts(NetworkNode node){
-		Set<NetworkLink> connectedNodes = new HashSet<NetworkLink>(this.networkGraph.degreeOf(node));
-		connectedNodes.addAll(this.networkGraph.incomingEdgesOf(node));
-		connectedNodes.addAll(this.networkGraph.outgoingEdgesOf(node));
+		Set<NetworkLink> connectedNodes = this.networkGraph.edgesOf(node);
 		
 		for(NetworkLink edge : connectedNodes){
-			NetworkNode peer  = (this.networkGraph.getEdgeSource(edge).compareTo(node) == 0 ? this.networkGraph.getEdgeSource(edge) : this.networkGraph.getEdgeTarget(edge));
-			if(peer.getNodeType().equals(NodeType.GENERIC_DEVICE)){
+			NetworkNode peer = (this.networkGraph.getEdgeSource(edge).compareTo(node) == 0 ? this.networkGraph.getEdgeSource(edge) : this.networkGraph.getEdgeTarget(edge));
+			if(peer.getNodeType().equals(NetworkNodeType.GENERIC_DEVICE)){
 				if(this.networkGraph.getAllEdges(node, peer).size() == this.networkGraph.degreeOf(peer))
+					this.networkGraph.removeVertex(peer);
+			} else if(peer.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+				if(this.networkGraph.degreeOf(peer) == 0 && !this.localSwitches.containsKey(peer) && !this.remoteSwitchAffinity.containsKey(peer))
 					this.networkGraph.removeVertex(peer);
 			}
 		}
 	}
 	
-	
 	@Override
-	public boolean addLocalSwitchLink(Link link){
+	public synchronized boolean addLocalSwitchLink(Link link){
 		boolean success = false;
+		NetworkNode src = new NetworkNode(link.getSrc().getLong(),NetworkNodeType.OFSWITCH);
+		NetworkNode dst = new NetworkNode(link.getDst().getLong(),NetworkNodeType.OFSWITCH);
+		NetworkLink lnk = this.networkLinkFromLink(link);
 		
-		if( !this.isSwitchLinkRegistered(link) && (this.isSwitchRegistered(link.getSrc()) || this.isSwitchRegistered(link.getDst())) ){
-			NetworkNode src = new NetworkNode(link.getSrc().getLong(),NodeType.OFSWITCH);
-			NetworkNode dst = new NetworkNode(link.getDst().getLong(),NodeType.OFSWITCH);
-			
-			// Add the link
-			success = this.networkGraph.addEdge(src, dst, this.networkLinkFromLink(link));
+		// Check that at least one of the end-point datapaths is controlled locally
+		if((this.localSwitches.containsKey(src) && (this.localSwitches.containsKey(dst) || this.remoteSwitchAffinity.containsKey(dst))) || (this.localSwitches.containsKey(dst) && (this.localSwitches.containsKey(src) || this.remoteSwitchAffinity.containsKey(src)))){
+			if(!this.networkGraph.containsEdge(lnk))
+				success = this.networkGraph.addEdge(src, dst, lnk);
 		}
 		
 		if(success){
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 				eventListner.linkAdded(link);
+		
+			this.printNetworkGraph();
 		}
 		
 		return success;
 	}
 	
 	@Override
-	public boolean addRemoteSwitchLink(NetworkLink link, String AmorphousNodeId){
+	public synchronized boolean addRemoteSwitchLink(NetworkLink link, String AmorphousNodeId){
 		boolean success = false;
 		
-		NetworkNode src = new NetworkNode(link.getNodeA(),NodeType.OFSWITCH);
-		NetworkNode dst = new NetworkNode(link.getNodeA(),NodeType.OFSWITCH);
+		NetworkNode src = new NetworkNode(link.getNodeA(),NetworkNodeType.OFSWITCH);
+		NetworkNode dst = new NetworkNode(link.getNodeA(),NetworkNodeType.OFSWITCH);
 		
-		if( !this.isSwitchLinkRegistered(link.getNodeA(), link.getNodeAPort(), link.getNodeB(), link.getNodeBPort()) && (this.isSwitchRegistered(src) || this.isSwitchRegistered(dst)) ){
+		if( !this.isSwitchLinkRegistered(link.getNodeA(), link.getNodeAPortNumber(), link.getNodeB(), link.getNodeBPortNumber()) ){
+			// Make sure both nodes belong to the network graph beforehand
+			if(!this.networkGraph.containsVertex(src))
+				this.networkGraph.addVertex(src);
+			if(!this.networkGraph.containsVertex(dst))
+				this.networkGraph.addVertex(dst);
+			
 			// Add the link
 			success = this.networkGraph.addEdge(src, dst, link);
 		}
@@ -274,6 +288,8 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 				eventListner.linkAdded(this.linkFromNetworkLink(link));
+		
+			this.printNetworkGraph();
 		}
 		
 		return success;
@@ -281,17 +297,18 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	
 	@Override
-	public boolean removeLocalSwitchLink(Link lnk){
-		NetworkNode src = new NetworkNode(lnk.getSrc().getLong(),NodeType.OFSWITCH);
-		NetworkNode dst = new NetworkNode(lnk.getDst().getLong(),NodeType.OFSWITCH);
+	public synchronized boolean removeLocalSwitchLink(Link lnk){
+		NetworkNode src = new NetworkNode(lnk.getSrc().getLong(),NetworkNodeType.OFSWITCH);
+		NetworkNode dst = new NetworkNode(lnk.getDst().getLong(),NetworkNodeType.OFSWITCH);
 		if(this.localSwitches.containsKey(src) || this.localSwitches.containsKey(dst)){
 		
 			NetworkLink link = this.networkLinkFromLink(lnk);
-			if(this.networkGraph.removeEdge(link)){
+			if(this.networkGraph.containsEdge(link) && this.networkGraph.removeEdge(link)){
 				// fire event listners
 				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 					eventListner.linkRemoved(lnk);
 				
+				this.printNetworkGraph();
 				return true;
 			}
 		}
@@ -300,9 +317,9 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	@Override
-	public boolean removeRemoteSwitchLink(NetworkLink link, String AmorphousNodeId){
-		NetworkNode src = new NetworkNode(link.getNodeA(), NodeType.OFSWITCH);
-		NetworkNode dst = new NetworkNode(link.getNodeB(), NodeType.OFSWITCH);
+	public synchronized boolean removeRemoteSwitchLink(NetworkLink link, String AmorphousNodeId){
+		NetworkNode src = new NetworkNode(link.getNodeA(), NetworkNodeType.OFSWITCH);
+		NetworkNode dst = new NetworkNode(link.getNodeB(), NetworkNodeType.OFSWITCH);
 		
 		if((this.remoteSwitchAffinity.containsKey(src) && this.remoteSwitchAffinity.get(src).equals(AmorphousNodeId)) ||
 				(this.remoteSwitchAffinity.containsKey(dst) && this.remoteSwitchAffinity.get(dst).equals(AmorphousNodeId))){
@@ -312,6 +329,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
 					eventListner.linkRemoved(this.linkFromNetworkLink(link));
 				
+				this.printNetworkGraph();
 				return true;
 			}
 		}
@@ -321,12 +339,21 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	
 	private NetworkLink networkLinkFromLink(Link link){
-		return new NetworkLink(link.getSrc().getLong(), link.getDst().getLong(), 
-				this.switchService.getSwitch(link.getSrc()).getPort(link.getSrcPort()).getName(),
-				link.getSrcPort().getPortNumber(),
-				this.switchService.getSwitch(link.getDst()).getPort(link.getDstPort()).getName(),
-				link.getDstPort().getPortNumber(),
-				this.switchService.getSwitch(link.getSrc()).getPort(link.getSrcPort()).getCurrSpeed());
+		long linkBandwidth = 0L;
+		IOFSwitch localSwitch = this.switchService.getSwitch(link.getSrc());
+
+		// Determine bandwidth from the the locally controlled switch
+		if(localSwitch == null) {
+			localSwitch = this.switchService.getSwitch(link.getDst());
+			if(localSwitch != null)
+				linkBandwidth = localSwitch.getPort(link.getDstPort()).getCurrSpeed();
+		} else {
+			linkBandwidth = localSwitch.getPort(link.getSrcPort()).getCurrSpeed();
+		}
+		
+		return new NetworkLink(link.getSrc().getLong(), link.getSrcPort().getPortNumber(),
+				link.getDst().getLong(), link.getDstPort().getPortNumber(),
+				linkBandwidth);
 	}
 	
 	private Link linkFromNetworkLink(NetworkLink link){
@@ -334,81 +361,136 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				DatapathId.of(link.getNodeB()), OFPort.of(link.getNodeBPortNumber()));
 	}
 	
+	public void printNetworkGraph(){
+		System.out.println();
+		System.out.println("[AMORPHOUS] Printing out network topology:" );
+		System.out.println();
+		for(NetworkNode node : this.networkGraph.vertexSet()){
+			StringBuilder dump = new StringBuilder("s" + node.getNodeId().toString());
+			for(NetworkLink link : this.networkGraph.edgesOf(node))
+				dump.append(" node").append(link.getNodeA()).append("-eth").append(link.getNodeAPortNumber()).append(":node").append(link.getNodeB()).append("-eth").append(link.getNodeBPortNumber());
+			System.out.println(dump);
+		}
+		System.out.println();
+	}
+
+	@Override
+	public synchronized boolean addLocalHost(IDevice Host) {
+		boolean success = false;
+		
+		NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+		NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
+		NetworkLink link = new NetworkLink(ofswitch.getNodeId(), Host.getAttachmentPoints()[0].getPort().getPortNumber(), 
+									host.getNodeId(), 0, 
+									this.switchService.getSwitch(Host.getAttachmentPoints()[0].getSwitchDPID()).getPort(Host.getAttachmentPoints()[0].getPort()).getCurrSpeed());
+		
+		// Existence and affinity checks
+		if( !this.networkGraph.containsEdge(link) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch) ){
+			
+			// Sanity check?
+			if(!this.networkGraph.containsVertex(host))
+				this.networkGraph.addVertex(host);
+				
+			// Add the link
+			success = this.networkGraph.addEdge(ofswitch, host, link);
+		}
+		
+		if(success){
+			// fire event listners
+			for(IAmorphTopologyListner eventListner : this.localEventListeners){
+				eventListner.hostAdded(host);
+				eventListner.linkAdded(this.linkFromNetworkLink(link));
+			}
+		
+			this.printNetworkGraph();
+		}
+		
+		return success;
+	}
+
+	@Override
+	public synchronized boolean addRemoteHost(NetworkHost host, NetworkLink link, String AmorphousNodeId) {
+		NetworkNode ofswitch;
+		
+		if(link.getNodeA().equals(host.getNodeId()))
+			ofswitch = new NetworkNode(link.getNodeB(), NetworkNodeType.OFSWITCH);
+		else
+			ofswitch = new NetworkNode(link.getNodeA(), NetworkNodeType.OFSWITCH);
+
+		// Existence and affinity checks
+		if(!this.networkGraph.containsEdge(link) && this.remoteSwitchAffinity.containsKey(ofswitch) && this.remoteSwitchAffinity.get(ofswitch).equals(AmorphousNodeId)){
+
+			// Sanity check
+			if(this.networkGraph.containsVertex(host))
+				this.networkGraph.removeVertex(host);
+			
+			this.networkGraph.addVertex(host);
 	
+			if(this.networkGraph.addEdge(ofswitch, host, link)){
+				// fire event listeners
+				for(IAmorphTopologyListner eventListner : this.remoteEventListeners){
+					eventListner.hostAdded(host);
+				}
+			
+				this.printNetworkGraph();
+				
+				return true;
+			}
+		}
+		
+		// Fail by default
+		return false;
+	}
 
-//	@Override
-//	public boolean addHost(IDevice Host, String AmorphNodeId, UpdateSource src) {
-//		// TODO is there any real use case for checking the node id?!
-//		if(this.addHost(Host)){
-//			// fire event listeners
-//			if(src.equals(UpdateSource.LOCAL))
-//				for(IAmorphTopologyListner eventListner : this.localEventListeners)
-//					eventListner.hostAdded(Host);
-//			else if(src.equals(UpdateSource.REMOTE))
-//				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-//					eventListner.hostAdded(Host);
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	private boolean addHost(IDevice Host){
-//		boolean hostAdded = false;
-//		for(SwitchPort port : Host.getAttachmentPoints()){
-//			if( this.isSwitchRegistered(port.getSwitchDPID()) ) {
-//				if( !this.hosts.containsKey(port.getSwitchDPID()) )
-//					this.hosts.put(port.getSwitchDPID(), new ConcurrentSkipListSet<IDevice>());
-//				this.hosts.get(port.getSwitchDPID()).add(Host);
-//				hostAdded = true;
-//			}
-//		}
-//		return hostAdded;
-//	}
-//
-//	@Override
-//	public boolean removeHost(IDevice Host, String AmorphNodeId, UpdateSource src) {
-//		// TODO is there any real use case for checking the node id?!
-//		if(this.removeHost(Host)){
-//			// fire event listeners
-//			if(src.equals(UpdateSource.LOCAL))
-//				for(IAmorphTopologyListner eventListner : this.localEventListeners)
-//					eventListner.hostRemoved(Host);
-//			else if(src.equals(UpdateSource.REMOTE))
-//				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-//					eventListner.hostRemoved(Host);
-//			return true;
-//		}
-//		return false;
-//	}
-//	
-//	private boolean removeHost(IDevice Host){
-//		boolean hostRemoved = false;
-//		for( Set<IDevice> switchHosts : this.hosts.values()){
-//			for(IDevice switchHost : switchHosts){
-//				Set<IDevice> toBeRemoved = new HashSet<IDevice>();
-//				if(switchHost.getDeviceKey().equals(Host.getDeviceKey())){
-//					toBeRemoved.add(switchHost);
-//				}
-//				hostRemoved |= switchHosts.removeAll(toBeRemoved);
-//			}
-//		}
-//		return hostRemoved;
-//	}
-//
-//	@Override
-//	public boolean updateHost(IDevice Host, String AmorphNodeId, UpdateSource src) {
-//		// TODO is there any real use case for checking the node id?!
-//		if(this.removeHost(Host) && this.addHost(Host)){
-//			// fire event listeners
-//			if(src.equals(UpdateSource.LOCAL))
-//				for(IAmorphTopologyListner eventListner : this.localEventListeners)
-//					eventListner.hostUpdated(Host);
-//			else if(src.equals(UpdateSource.REMOTE))
-//				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-//					eventListner.hostUpdated(Host);
-//			return true;
-//		}
-//		return false;
-//	}
+	public synchronized boolean removeLocalHost(IDevice Host){
+		NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+		NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
+		
+		// Existence and Affinity checks
+		if(this.networkGraph.containsVertex(host) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch)){
+			if(this.networkGraph.removeVertex(host)){
+				// Fire event listeners
+				for(IAmorphTopologyListner eventListner : this.localEventListeners){
+					eventListner.hostRemoved(host);
+				}
+				
+				this.printNetworkGraph();
+				
+				return true;
+			}
+		}
+		
+		// Fail by default
+		return false;
 
+	}
+
+	public synchronized boolean removeRemoteHost(NetworkHost host, String AmorphousNodeId){
+		if(this.networkGraph.containsVertex(host) && this.networkGraph.edgesOf(host).size() == 1){
+			NetworkLink link = ((NetworkLink)this.networkGraph.edgesOf(host).toArray()[0]);
+			NetworkNode ofswitch = new NetworkNode(link.getNodeA(), NetworkNodeType.OFSWITCH);
+			
+			// Figure out which is node is the switch
+			if(!this.networkGraph.containsVertex(ofswitch))
+				ofswitch = new NetworkNode(link.getNodeB(), NetworkNodeType.OFSWITCH);
+			
+			// Affinity checks
+			if( this.networkGraph.containsVertex(ofswitch) && (this.remoteSwitchAffinity.containsKey(ofswitch) && this.remoteSwitchAffinity.get(ofswitch).equals(AmorphousNodeId)) ){
+				this.networkGraph.removeVertex(host);
+				
+				// Fire event listeners
+				for(IAmorphTopologyListner eventListner : this.localEventListeners){
+					eventListner.hostRemoved(host);
+				}
+				
+				this.printNetworkGraph();
+				
+				return true;
+			}
+		}
+		
+		// Fail by default
+		return false;
+	}
+	
 }

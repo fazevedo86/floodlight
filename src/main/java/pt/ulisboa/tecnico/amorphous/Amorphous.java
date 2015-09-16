@@ -164,7 +164,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 	
 	@Override
 	public void switchAdded(DatapathId switchId) {
-		this.localStateService.addLocalSwitch(switchId);
+		// Switch connected
 	}
 
 	@Override
@@ -174,7 +174,8 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 
 	@Override
 	public void switchActivated(DatapathId switchId) {
-		// Nothing to do here...
+		// Switch now being managed
+		this.localStateService.addLocalSwitch(switchId);
 	}
 
 	@Override
@@ -242,40 +243,30 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 
 	@Override
 	public void deviceAdded(IDevice device) {
-		
-		device.getVlanId()[0].getVlan();
-		String deviceMAC = device.getMACAddress().toString();
-		Integer ipAddress = device.getIPv4Addresses()[0].getInt();
-		
-		
-		Long DPID = device.getAttachmentPoints()[0].getSwitchDPID().getLong();
-		OFPortDesc portDesc = this.switchService.getActiveSwitch(device.getAttachmentPoints()[1].getSwitchDPID()).getPort(device.getAttachmentPoints()[0].getPort());
-		String portMAC = portDesc.getHwAddr().toString();
-		String Port = portDesc.getName();
-		Long Bandwidth = portDesc.getCurrSpeed();
-		
-		
-//		this.localStateService.addHost(device, this.sessionId, UpdateSource.LOCAL);
+		this.localStateService.addLocalHost(device);
 	}
 
 	@Override
 	public void deviceRemoved(IDevice device) {
-//		this.localStateService.removeHost(device, this.sessionId, UpdateSource.LOCAL);
+		this.localStateService.removeLocalHost(device);
 	}
 
 	@Override
 	public void deviceMoved(IDevice device) {
-//		this.localStateService.updateHost(device, this.sessionId, UpdateSource.LOCAL);
+		this.localStateService.removeLocalHost(device);
+		this.localStateService.addLocalHost(device);
 	}
 
 	@Override
 	public void deviceIPV4AddrChanged(IDevice device) {
-//		this.localStateService.updateHost(device, this.sessionId, UpdateSource.LOCAL);
+		this.localStateService.removeLocalHost(device);
+		this.localStateService.addLocalHost(device);
 	}
 
 	@Override
 	public void deviceVlanChanged(IDevice device) {
-//		this.localStateService.updateHost(device, this.sessionId, UpdateSource.LOCAL);
+		this.localStateService.removeLocalHost(device);
+		this.localStateService.addLocalHost(device);
 	}
 	
 	//------------------------------------------------------------------------

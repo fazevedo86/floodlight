@@ -6,15 +6,15 @@ public class NetworkNode implements Serializable, Comparable<NetworkNode> {
 	
 	private static final long serialVersionUID = 45905291999722011L;
 
-	public enum NodeType{
+	public enum NetworkNodeType{
 		GENERIC_DEVICE,
 		OFSWITCH
 	}
 
 	private final Long nodeId;
-	private final NodeType type;
+	private final NetworkNodeType type;
 	
-	public NetworkNode(Long nodeId, NodeType nodeType) {
+	public NetworkNode(Long nodeId, NetworkNodeType nodeType) {
 		this.nodeId = nodeId;
 		this.type = nodeType;
 	}
@@ -23,7 +23,7 @@ public class NetworkNode implements Serializable, Comparable<NetworkNode> {
 		return this.nodeId;
 	}
 	
-	public NodeType getNodeType(){
+	public NetworkNodeType getNodeType(){
 		return this.type;
 	}
 
@@ -35,7 +35,22 @@ public class NetworkNode implements Serializable, Comparable<NetworkNode> {
 			else
 				return -1;
 		
-		return this.type.compareTo(node.type);
+		return (this.type.equals(node.type) ? 0 : this.type.compareTo(node.type));
+	}
+	
+	@Override
+	public boolean equals(Object obj){
+		if(obj instanceof NetworkNode){
+			NetworkNode target = (NetworkNode)obj;
+			return this.nodeId.equals(target.nodeId) && this.type.equals(target.type);
+		} else {
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode(){
+		return (this.nodeId.intValue() / (this.type.ordinal() + 1)) * this.nodeId.intValue();
 	}
 
 }

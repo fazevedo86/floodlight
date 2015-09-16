@@ -13,6 +13,8 @@ import net.floodlightcontroller.routing.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
+
 // TODO Have this interface extend the IListener<String> and implement ListenerDispatcher on LocalStateService
 public interface IAmorphTopologyListner extends EventListener {
 
@@ -24,9 +26,9 @@ public interface IAmorphTopologyListner extends EventListener {
 	
 	public void linkRemoved(Link link);
 	
-	public void hostAdded(IDevice host);
+	public void hostAdded(NetworkHost host);
 	
-	public void hostUpdated(IDevice host);
+	public void hostUpdated(NetworkHost host);
 	
-	public void hostRemoved(IDevice host);
+	public void hostRemoved(NetworkHost host);
 }

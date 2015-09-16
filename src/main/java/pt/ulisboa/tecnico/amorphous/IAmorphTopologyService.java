@@ -47,12 +47,12 @@ public interface IAmorphTopologyService extends IFloodlightService {
 	 * Check if a link between two switches is currently part of the network graph
 	 * 
 	 * @param srcId The datapath id of the source switch
-	 * @param srcPortName The port on the source switch
+	 * @param srcPortNumber The port on the source switch
 	 * @param dstId The datapath id of the destination switch
-	 * @param dstPortName The port on the destination switch
+	 * @param dstPortNumber The port on the destination switch
 	 * @return True if the link is registered in the graph, False otherwise
 	 */
-	public boolean isSwitchLinkRegistered(Long srcId, String srcPortName, Long dstId, String dstPortName);
+	public boolean isSwitchLinkRegistered(Long srcId, Integer srcPortNumber, Long dstId, Integer dstPortNumber);
 
 	/**
 	 * Add a listener for topology events.

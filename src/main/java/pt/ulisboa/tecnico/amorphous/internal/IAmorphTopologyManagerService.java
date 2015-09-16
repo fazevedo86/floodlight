@@ -11,6 +11,7 @@ import net.floodlightcontroller.routing.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 
@@ -83,31 +84,18 @@ public interface IAmorphTopologyManagerService extends IFloodlightService {
 	/**
 	 * Add a host to the topology
 	 * 
-	 * @param Host The host to be added
+	 * @param host The host to be added
 	 * @return True if the host was successfully added to the topology, False otherwise
 	 */
-//	public boolean addLocalHost(IDevice Host);
-//	
-//	public boolean addRemoteHost(String HostMAC, Integer HostIP, Short HostVLAN, String AmorphousNodeId);
+	public boolean addLocalHost(IDevice host);
+
+	public boolean addRemoteHost(NetworkHost host, NetworkLink link, String AmorphousNodeId);
 	
-	/**
-	 * Updates a host that is currently in the topology
-	 * 
-	 * @param Host The host to be updated
-	 * @return True if the host was successfully updated in the topology, False otherwise
-	 */
 //	public boolean updateLocalHost(IDevice Host);
-//	
-//	public boolean updateRemoteHost(String HostMAC, Integer HostIP, Short HostVLAN, String AmorphousNodeId);
+
+//	public boolean updateRemoteHost(NetworkHost host, String AmorphousNodeId);
 	
-	/**
-	 * Removes a host from the topology
-	 * 
-	 * @param Host The host to be removed
-	 * @param src The source of the host removal event
-	 * @return True if the host was successfully removed from the topology, False otherwise
-	 */
-//	public boolean removeLocalHost(IDevice Host);
-//
-//	public boolean removeRemoteHost(String HostMAC, Short HostVLAN, String AmorphousNodeId);
+	public boolean removeLocalHost(IDevice Host);
+
+	public boolean removeRemoteHost(NetworkHost host, String AmorphousNodeId);
 }
