@@ -91,7 +91,7 @@ public interface IAmorphTopologyManagerService extends IFloodlightService {
 
 	public boolean addRemoteHost(NetworkHost host, NetworkLink link, String AmorphousNodeId);
 	
-//	public boolean updateLocalHost(IDevice Host);
+	public boolean updateLocalHost(IDevice Host);
 
 //	public boolean updateRemoteHost(NetworkHost host, String AmorphousNodeId);
 	

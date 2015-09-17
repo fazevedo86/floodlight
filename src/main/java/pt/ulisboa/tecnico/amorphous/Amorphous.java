@@ -25,6 +25,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClass;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -242,7 +244,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 	}
 
 	@Override
-	public void deviceAdded(IDevice device) {
+	public void deviceAdded(IDevice device) {		
 		this.localStateService.addLocalHost(device);
 	}
 
@@ -253,20 +255,17 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 
 	@Override
 	public void deviceMoved(IDevice device) {
-		this.localStateService.removeLocalHost(device);
-		this.localStateService.addLocalHost(device);
+		this.localStateService.updateLocalHost(device);
 	}
 
 	@Override
 	public void deviceIPV4AddrChanged(IDevice device) {
-		this.localStateService.removeLocalHost(device);
-		this.localStateService.addLocalHost(device);
+		this.localStateService.updateLocalHost(device);
 	}
 
 	@Override
 	public void deviceVlanChanged(IDevice device) {
-		this.localStateService.removeLocalHost(device);
-		this.localStateService.addLocalHost(device);
+		this.localStateService.updateLocalHost(device);
 	}
 	
 	//------------------------------------------------------------------------

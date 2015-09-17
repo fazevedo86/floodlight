@@ -27,6 +27,7 @@ import net.floodlightcontroller.routing.Link;
 
 import org.jgrapht.UndirectedGraph;
 import org.jgrapht.graph.Multigraph;
+import org.jgrapht.graph.ParanoidGraph;
 import org.jgrapht.graph.WeightedMultigraph;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -68,6 +69,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	
 	// Local switch map
 	protected volatile Map<NetworkNode, DatapathId> localSwitches;
+	protected volatile Map<Long, NetworkHost> localHosts;
 	
 	
 	// Network policies per floodlight module
@@ -84,6 +86,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		this.networkGraph = new WeightedMultigraph<NetworkNode, NetworkLink>(NetworkLink.class);
 		this.remoteSwitchAffinity = new ConcurrentHashMap<NetworkNode, String>();
 		this.localSwitches = new ConcurrentHashMap<NetworkNode, DatapathId>();
+		this.localHosts = new ConcurrentHashMap<Long, NetworkHost>();
 
 		this.networkPolicies = new ConcurrentHashMap<Class<? extends IFloodlightModule>, Serializable>();
 		this.remoteEventListeners = new ConcurrentSkipListSet<IAmorphTopologyListner>();
@@ -300,20 +303,40 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	public synchronized boolean removeLocalSwitchLink(Link lnk){
 		NetworkNode src = new NetworkNode(lnk.getSrc().getLong(),NetworkNodeType.OFSWITCH);
 		NetworkNode dst = new NetworkNode(lnk.getDst().getLong(),NetworkNodeType.OFSWITCH);
-		if(this.localSwitches.containsKey(src) || this.localSwitches.containsKey(dst)){
+		boolean success = false;
 		
+		if(this.localSwitches.containsKey(src) || this.localSwitches.containsKey(dst)){
 			NetworkLink link = this.networkLinkFromLink(lnk);
-			if(this.networkGraph.containsEdge(link) && this.networkGraph.removeEdge(link)){
-				// fire event listners
-				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-					eventListner.linkRemoved(lnk);
+			
+			try{
+				success = this.networkGraph.removeEdge(link);
+			} catch(NullPointerException e){
+				// wtf
+				Set<NetworkLink> links = new HashSet<NetworkLink>();
+				for(int i = this.networkGraph.getAllEdges(src, dst).size(); i > 0 && !success; i--){
+					NetworkLink netlink = this.networkGraph.removeEdge(src, dst);
+					if(link.equals(netlink))
+						success = true;
+					else
+						links.add(netlink);
+					
+				}
+				for(NetworkLink netlink : links)
+					this.networkGraph.addEdge(src, dst, netlink);
 				
-				this.printNetworkGraph();
-				return true;
 			}
+				if(success){
+					// fire event listners
+					for(IAmorphTopologyListner eventListner : this.localEventListeners)
+						eventListner.linkRemoved(lnk);
+					
+					this.printNetworkGraph();
+					return true;
+				}
+			
 		}
 		
-		return false;
+		return success;
 	}
 	
 	@Override
@@ -362,47 +385,87 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	public void printNetworkGraph(){
-		System.out.println();
-		System.out.println("[AMORPHOUS] Printing out network topology:" );
-		System.out.println();
+		StringBuilder affinity = new StringBuilder("[AMORPHOUS] OFSwitch controller affinity:");
+		System.out.println("\n");
+		System.out.println("[AMORPHOUS] Network topology:" );
+
 		for(NetworkNode node : this.networkGraph.vertexSet()){
-			StringBuilder dump = new StringBuilder("s" + node.getNodeId().toString());
-			for(NetworkLink link : this.networkGraph.edgesOf(node))
-				dump.append(" node").append(link.getNodeA()).append("-eth").append(link.getNodeAPortNumber()).append(":node").append(link.getNodeB()).append("-eth").append(link.getNodeBPortNumber());
-			System.out.println(dump);
+			if(node.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+				StringBuilder connections = new StringBuilder("s" + node.getNodeId().toString());
+				for(NetworkLink link : this.networkGraph.edgesOf(node)){
+					
+					// Source side
+					NetworkNode tmpNode = this.networkGraph.getEdgeSource(link);
+					if(tmpNode.equals(node)){
+						connections.append(" s");
+					} else {
+						if(tmpNode.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+							connections.append(" s");
+						} else {
+							connections.append(" h");
+						}	
+					}
+					connections.append(link.getNodeA()).append("-eth").append(link.getNodeAPortNumber()).append(":");
+					
+					// Target side
+					tmpNode = this.networkGraph.getEdgeTarget(link);
+					if(tmpNode.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+						connections.append("s");
+					} else {
+						connections.append("h");
+					}
+					connections.append(link.getNodeB()).append("-eth").append(link.getNodeBPortNumber());
+				}
+				System.out.println(connections);
+			}
 		}
+		for(NetworkNode node : this.localSwitches.keySet())
+			affinity.append("\ns").append(node.getNodeId()).append(" -> LOCAL");
+		for(NetworkNode node : this.remoteSwitchAffinity.keySet())
+			affinity.append("\ns").append(node.getNodeId()).append(" -> ").append(this.remoteSwitchAffinity.get(node));
+			
 		System.out.println();
+		
+		System.out.println(affinity);
+		
+		System.out.println("\n");
 	}
 
 	@Override
 	public synchronized boolean addLocalHost(IDevice Host) {
 		boolean success = false;
+		LocalStateService.logger.info("Adding host " + Host.getMACAddressString());
 		
-		NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
-		NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
-		NetworkLink link = new NetworkLink(ofswitch.getNodeId(), Host.getAttachmentPoints()[0].getPort().getPortNumber(), 
-									host.getNodeId(), 0, 
-									this.switchService.getSwitch(Host.getAttachmentPoints()[0].getSwitchDPID()).getPort(Host.getAttachmentPoints()[0].getPort()).getCurrSpeed());
-		
-		// Existence and affinity checks
-		if( !this.networkGraph.containsEdge(link) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch) ){
+		if(Host.getAttachmentPoints().length == 1){
+			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+			NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
+			NetworkLink link = new NetworkLink(ofswitch.getNodeId(), Host.getAttachmentPoints()[0].getPort().getPortNumber(), 
+										host.getNodeId(), 0, 
+										this.switchService.getSwitch(Host.getAttachmentPoints()[0].getSwitchDPID()).getPort(Host.getAttachmentPoints()[0].getPort()).getCurrSpeed());
 			
-			// Sanity check?
-			if(!this.networkGraph.containsVertex(host))
-				this.networkGraph.addVertex(host);
+			// Existence and affinity checks
+			if( !this.networkGraph.containsEdge(link) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch) ){
 				
-			// Add the link
-			success = this.networkGraph.addEdge(ofswitch, host, link);
-		}
-		
-		if(success){
-			// fire event listners
-			for(IAmorphTopologyListner eventListner : this.localEventListeners){
-				eventListner.hostAdded(host);
-				eventListner.linkAdded(this.linkFromNetworkLink(link));
+				if(!this.localHosts.containsKey(Host.getDeviceKey()))
+					this.localHosts.put(Host.getDeviceKey(), host);
+				
+				// Sanity check?
+				if(!this.networkGraph.containsVertex(host))
+					this.networkGraph.addVertex(host);
+				
+				// Add the host and link
+				success = this.networkGraph.addEdge(ofswitch, host, link);
 			}
-		
-			this.printNetworkGraph();
+			
+			if(success){
+				// fire event listners
+				for(IAmorphTopologyListner eventListner : this.localEventListeners){
+					eventListner.hostAdded(host);
+					eventListner.linkAdded(this.linkFromNetworkLink(link));
+				}
+			
+				this.printNetworkGraph();
+		}
 		}
 		
 		return success;
@@ -442,21 +505,31 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		return false;
 	}
 
-	public synchronized boolean removeLocalHost(IDevice Host){
-		NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
-		NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
+	public synchronized boolean updateLocalHost(IDevice Host){
+		if(Host.getAttachmentPoints().length == 0)
+			return this.removeLocalHost(Host);
 		
+		return false;
+	}
+	
+	public synchronized boolean removeLocalHost(IDevice Host){
 		// Existence and Affinity checks
-		if(this.networkGraph.containsVertex(host) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch)){
-			if(this.networkGraph.removeVertex(host)){
-				// Fire event listeners
-				for(IAmorphTopologyListner eventListner : this.localEventListeners){
-					eventListner.hostRemoved(host);
+		if(this.localHosts.containsKey(Host.getDeviceKey())){
+			NetworkHost host = this.localHosts.get(Host.getDeviceKey());
+			
+			if(this.networkGraph.containsVertex(host)){
+				if(this.networkGraph.removeVertex(host)){
+					this.localHosts.remove(Host.getDeviceKey());
+					
+					// Fire event listeners
+					for(IAmorphTopologyListner eventListner : this.localEventListeners){
+						eventListner.hostRemoved(host);
+					}
+					
+					this.printNetworkGraph();
+					
+					return true;
 				}
-				
-				this.printNetworkGraph();
-				
-				return true;
 			}
 		}
 		
