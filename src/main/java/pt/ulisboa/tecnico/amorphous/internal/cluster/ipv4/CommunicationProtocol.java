@@ -46,7 +46,7 @@ public class CommunicationProtocol extends Thread {
 			while(readBytes < length)
 				readBytes += this.inStream.read(buffer, readBytes, length - readBytes);
 		} catch(IndexOutOfBoundsException e){
-			McastOutboundSocket.logger.error("The connection " + this.socket.getInetAddress().getHostAddress() + ":" + this.socket.getPort() + " has been closed.");
+			CommunicationProtocol.logger.error("The connection " + this.socket.getInetAddress().getHostAddress() + ":" + this.socket.getPort() + " has been closed.");
 			this.endComm();
 			return null;
 		}
@@ -71,9 +71,11 @@ public class CommunicationProtocol extends Thread {
 				return;
 			
 		} catch(IllegalArgumentException ile){
-			McastOutboundSocket.logger.info(ile.getMessage());
-		} catch (IOException ioe) {
-			McastOutboundSocket.logger.error(ioe.getMessage());
+			CommunicationProtocol.logger.info(ile.getMessage());
+		} catch(IOException ioe) {
+			CommunicationProtocol.logger.error(ioe.getMessage());
+		} catch(NullPointerException e){
+			
 		}
 		
 		// Process the packet if we have one to process
