@@ -434,7 +434,6 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	@Override
 	public synchronized boolean addLocalHost(IDevice Host) {
 		boolean success = false;
-		LocalStateService.logger.info("Adding host " + Host.getMACAddressString());
 		
 		if(Host.getAttachmentPoints().length == 1){
 			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
