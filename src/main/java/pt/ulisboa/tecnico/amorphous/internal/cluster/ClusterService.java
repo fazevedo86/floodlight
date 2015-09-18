@@ -163,7 +163,7 @@ public class ClusterService implements IAmorphousClusterService {
 
 	@Override
 	public void processClusterMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) {
-		ClusterService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + "(" + NodeAddress + ")");
+		ClusterService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + "(" + NodeAddress.getHostAddress() + ")");
 
 		// Dispatch message handling to accordingly method
 		try {
@@ -181,6 +181,7 @@ public class ClusterService implements IAmorphousClusterService {
 	
 	@SuppressWarnings("unused")
 	private void handleMessageJoinCluster(InetAddress origin, IAmorphClusterMessage message){
+		ClusterService.logger.debug("Processing JoinCluster message from node " + message.getOriginatingNodeId() + "(" + origin.getHostAddress() + ")");
 		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) ){
 			try {
 				this.clusterComm.sendMessage(new ClusterNode(origin, message.getOriginatingNodeId()), new JoinCluster(this.NodeId));
