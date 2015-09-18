@@ -188,7 +188,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 			if(ClusterService.getInstance().isClusterNode(originatingNode)){
 				// Dispatch message handling to accordingly method
 				try {
-					GlobalStateService.class.getMethod("handleMessage" + msg.getMessageType().getSimpleName(), IAmorphClusterMessage.class).invoke(this, msg);
+					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), IAmorphClusterMessage.class).invoke(this, msg);
 				} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
 					GlobalStateService.logger.error(e.getMessage());
 				}
