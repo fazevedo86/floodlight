@@ -112,7 +112,7 @@ public class ClusterService implements IAmorphousClusterService {
 		return Collections.unmodifiableCollection(this.nodes.values());
 	}
 	
-	private void addClusterNode(ClusterNode node) {
+	private boolean addClusterNode(ClusterNode node) {
 		if(this.isClusterNode(node)){
 			ClusterNode existingNode = this.nodes.get(node.getNodeIP());
 			if(!existingNode.getNodeID().equals(node.getNodeID())){
@@ -122,14 +122,20 @@ public class ClusterService implements IAmorphousClusterService {
 				this.nodes.put(node.getNodeIP(), node);
 				
 				this.printClusterStatus();
+				
+				return true;
 			}
 		} else {
 			this.nodes.put(node.getNodeIP(), node);
 			
 			this.printClusterStatus();
+			
+			return true;
 		}
 			
 		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
+		
+		return false;
 	}
 
 	private void removeClusterNode(ClusterNode node) {
@@ -175,7 +181,14 @@ public class ClusterService implements IAmorphousClusterService {
 	
 	@SuppressWarnings("unused")
 	private void handleMessageJoinCluster(InetAddress origin, IAmorphClusterMessage message){
-		this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId()));
+		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) ){
+			try {
+				this.clusterComm.sendMessage(new ClusterNode(origin, message.getOriginatingNodeId()), new JoinCluster(this.NodeId));
+			} catch (InvalidAmorphClusterMessageException e) {
+				ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
+			}
+		}
+		
 	}
 
 	@SuppressWarnings("unused")
