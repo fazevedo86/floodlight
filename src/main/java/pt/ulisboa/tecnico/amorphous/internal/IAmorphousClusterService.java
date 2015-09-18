@@ -9,6 +9,7 @@ import java.net.InetAddress;
 import java.util.Collection;
 
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
+import pt.ulisboa.tecnico.amorphous.internal.cluster.ipv4.ClusterCommunicator;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
 
@@ -37,4 +38,5 @@ public interface IAmorphousClusterService {
 	
 	public void processClusterMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) throws InvalidAmorphClusterMessageException;
 	
+	public ClusterCommunicator getClusterComm();
 }

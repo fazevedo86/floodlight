@@ -6,20 +6,22 @@
 package pt.ulisboa.tecnico.amorphous.internal.state.messages;
 
 import java.util.Map;
-
-import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 
 public class AddLink implements IAmorphStateMessage<NetworkLink> {
 
-	public AddLink() {
-		// TODO Auto-generated constructor stub
+	private static final long serialVersionUID = -5373576974416736754L;
+	private final String nodeId;
+	protected final NetworkLink networkLink;
+	
+	public AddLink(String NodeId, NetworkLink NetLink) {
+		this.nodeId = NodeId;
+		this.networkLink = NetLink;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.nodeId;
 	}
 
 	@Override
@@ -29,21 +31,18 @@ public class AddLink implements IAmorphStateMessage<NetworkLink> {
 	}
 
 	@Override
-	public Class<? extends IAmorphStateMessage> getMessageType() {
-		// TODO Auto-generated method stub
-		return null;
+	public Class<AddLink> getMessageType() {
+		return AddLink.class;
 	}
 
 	@Override
 	public Class<NetworkLink> getPayloadType() {
-		// TODO Auto-generated method stub
-		return null;
+		return NetworkLink.class;
 	}
 
 	@Override
 	public NetworkLink getPayload() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.networkLink;
 	}
 
 

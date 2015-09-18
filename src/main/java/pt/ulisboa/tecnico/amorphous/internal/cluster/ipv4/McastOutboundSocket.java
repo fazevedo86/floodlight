@@ -96,7 +96,7 @@ public class McastOutboundSocket extends Thread {
 		// Send the packet
 		try {
 			this.srvMcastSocket.send(mcastPacket);
-			McastOutboundSocket.logger.debug("ClusterMessage sent: \"" + pkt.getPayload() + "\" to " + pkt.getDestination().getHostAddress());
+			McastOutboundSocket.logger.debug("Sent a message to group " + pkt.getDestination().getHostAddress() + " (" + pkt.getPayload().length + "bytes )");
 		} catch (IOException e) {
 			McastOutboundSocket.logger.error("Caught an exception while trying to send the message \"" + pkt.getPayload() + "\" to " + pkt.getDestination().getHostAddress() + ": " + e.getMessage());
 			McastOutboundSocket.logger.error(e.getStackTrace().toString());

@@ -5,45 +5,45 @@
 
 package pt.ulisboa.tecnico.amorphous.internal.state.messages;
 
-import java.io.Serializable;
 import java.util.Map;
 
-import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
+import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 
-public class RemOFSwitch implements IAmorphStateMessage {
+public class RemOFSwitch implements IAmorphStateMessage<NetworkNode> {
 
-	public RemOFSwitch() {
-		// TODO Auto-generated constructor stub
+	private static final long serialVersionUID = 595055927605119847L;
+	private final String nodeId;
+	protected final NetworkNode ofswitch;
+	
+	public RemOFSwitch(String NodeId, NetworkNode OFSwitch) {
+		this.nodeId = NodeId;
+		this.ofswitch = OFSwitch;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.nodeId;
 	}
 
 	@Override
 	public Map<String, Integer> getVectorClock() {
-		// TODO Auto-generated method stub
+		// TODO Implement
 		return null;
 	}
 
 	@Override
-	public Class getMessageType() {
-		// TODO Auto-generated method stub
-		return null;
+	public Class<RemOFSwitch> getMessageType() {
+		return RemOFSwitch.class;
 	}
 
 	@Override
-	public Class getPayloadType() {
-		// TODO Auto-generated method stub
-		return null;
+	public Class<NetworkNode> getPayloadType() {
+		return NetworkNode.class;
 	}
 
 	@Override
-	public Serializable getPayload() {
-		// TODO Auto-generated method stub
-		return null;
+	public NetworkNode getPayload() {
+		return this.ofswitch;
 	}
 
 }

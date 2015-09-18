@@ -120,9 +120,13 @@ public class ClusterService implements IAmorphousClusterService {
 				this.removeClusterNode(existingNode);
 				GlobalStateService.getInstance().setClusterNodeDown(node.getNodeID());
 				this.nodes.put(node.getNodeIP(), node);
+				
+				this.printClusterStatus();
 			}
 		} else {
 			this.nodes.put(node.getNodeIP(), node);
+			
+			this.printClusterStatus();
 		}
 			
 		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
@@ -135,9 +139,19 @@ public class ClusterService implements IAmorphousClusterService {
 		} else {
 			GlobalStateService.getInstance().setClusterNodeDown(node.getNodeID());
 			ClusterService.logger.debug("Node " + removedNode.getNodeID() + "(" + removedNode.getNodeIP() + ") removed!");
+			
+			this.printClusterStatus();
 		}
 	}
 
+	public void printClusterStatus(){
+		StringBuilder members = new StringBuilder("\n[AMORPHOUS] Clsuter membership:");
+		for(ClusterNode node : this.nodes.values()){
+			members.append("\n" +  node.getNodeIP().getHostName() + " sessionId=" + node.getNodeID());
+		}
+		members.append("\n");
+		System.out.println(members);
+	}
 	
 	/*** Message handling ***/
 
@@ -152,6 +166,11 @@ public class ClusterService implements IAmorphousClusterService {
 			ClusterService.logger.error(e.getMessage());
 		}
 		
+	}
+	
+	@Override
+	public ClusterCommunicator getClusterComm(){
+		return this.clusterComm;
 	}
 	
 	@SuppressWarnings("unused")

@@ -157,7 +157,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			// fire event listeners
 			for(IAmorphTopologyListner eventListner : this.localEventListeners)
-				eventListner.switchAdded(switchId);
+				eventListner.switchAdded(node);
 			
 			this.printNetworkGraph();
 			return true;
@@ -178,7 +178,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			// fire event listeners
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-				eventListner.switchAdded(DatapathId.of(node.getNodeId()));
+				eventListner.switchAdded(node);
 			
 			this.printNetworkGraph();
 			return true;
@@ -198,7 +198,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.localEventListeners)
-				eventListner.switchRemoved(switchId);
+				eventListner.switchRemoved(node);
 			
 			this.printNetworkGraph();
 			return true;
@@ -216,7 +216,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-				eventListner.switchRemoved(DatapathId.of(node.getNodeId()));
+				eventListner.switchRemoved(node);
 			
 			this.printNetworkGraph();
 			return true;
@@ -260,8 +260,8 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		if(success){
 			// fire event listners
-			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-				eventListner.linkAdded(link);
+			for(IAmorphTopologyListner eventListner : this.localEventListeners)
+				eventListner.linkAdded(lnk);
 		
 			this.printNetworkGraph();
 		}
@@ -290,7 +290,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		if(success){
 			// fire event listners
 			for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-				eventListner.linkAdded(this.linkFromNetworkLink(link));
+				eventListner.linkAdded(link);
 		
 			this.printNetworkGraph();
 		}
@@ -328,7 +328,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				if(success){
 					// fire event listners
 					for(IAmorphTopologyListner eventListner : this.localEventListeners)
-						eventListner.linkRemoved(lnk);
+						eventListner.linkRemoved(link);
 					
 					this.printNetworkGraph();
 					return true;
@@ -350,7 +350,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			if(this.networkGraph.removeEdge(link)){
 				// fire event listners
 				for(IAmorphTopologyListner eventListner : this.remoteEventListeners)
-					eventListner.linkRemoved(this.linkFromNetworkLink(link));
+					eventListner.linkRemoved(link);
 				
 				this.printNetworkGraph();
 				return true;
@@ -361,7 +361,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	
-	private NetworkLink networkLinkFromLink(Link link){
+	public NetworkLink networkLinkFromLink(Link link){
 		long linkBandwidth = 0L;
 		IOFSwitch localSwitch = this.switchService.getSwitch(link.getSrc());
 
@@ -459,12 +459,11 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			if(success){
 				// fire event listners
 				for(IAmorphTopologyListner eventListner : this.localEventListeners){
-					eventListner.hostAdded(host);
-					eventListner.linkAdded(this.linkFromNetworkLink(link));
+					eventListner.hostAdded(host, link);
 				}
 			
 				this.printNetworkGraph();
-		}
+			}
 		}
 		
 		return success;
@@ -491,7 +490,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			if(this.networkGraph.addEdge(ofswitch, host, link)){
 				// fire event listeners
 				for(IAmorphTopologyListner eventListner : this.remoteEventListeners){
-					eventListner.hostAdded(host);
+					eventListner.hostAdded(host, link);
 				}
 			
 				this.printNetworkGraph();

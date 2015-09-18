@@ -96,7 +96,6 @@ public class McastInboundSocket extends Thread {
 		ClusterCommunicator clusterComm = ClusterCommunicator.getInstance();
 		byte[] inputBuffer = null;
 		DatagramPacket rcvPacket = null;
-		String packetContent = null;
 		InetAddress nodeAddress = null;
 		
 		// While the server is running listen for incoming packets
@@ -106,9 +105,8 @@ public class McastInboundSocket extends Thread {
 			try {
 				this.srvMcastSocket.receive(rcvPacket);
 				nodeAddress = rcvPacket.getAddress();
-				packetContent = new String(rcvPacket.getData(),0,rcvPacket.getLength());
 				
-				McastInboundSocket.logger.debug("Got a new packet from " + nodeAddress + ": " + packetContent);
+				McastInboundSocket.logger.debug("Got a new packet from " + nodeAddress + " (" + rcvPacket.getData().length + " bytes)");
 				
 				// Process the packet
 				clusterComm.registerInboundMessage(nodeAddress, rcvPacket.getData());

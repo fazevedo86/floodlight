@@ -37,6 +37,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService.EventSource;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService.UpdateSource;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
@@ -149,6 +150,11 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
         		Amorphous.this.amorphcluster.stopClusterService();
         	}
         });
+		
+		this.localStateService.addTopologyListner(this.globalStateService, EventSource.LOCAL);
+		this.globalStateService.setTopologyManager(this.localStateService);
+		this.globalStateService.setClusterService(this.amorphcluster);
+		
         this.switchService.addOFSwitchListener(this);
         this.topologyService.addListener(this);
         this.deviceManagerService.addListener(this);

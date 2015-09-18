@@ -30,4 +30,19 @@ public class ClusterNode {
 		return this.nodeId;
 	}
 
+	@Override
+	public boolean equals(Object obj){
+		if(obj instanceof ClusterNode){
+			ClusterNode target = (ClusterNode)obj;
+			return this.ip.equals(target.ip) && this.nodeId.equals(target.nodeId);
+		} else {
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode(){
+		return this.nodeId.hashCode() + ip.hashCode();
+	}
+	
 }

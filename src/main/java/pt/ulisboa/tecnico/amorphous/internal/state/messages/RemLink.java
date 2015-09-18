@@ -5,21 +5,24 @@
 
 package pt.ulisboa.tecnico.amorphous.internal.state.messages;
 
-import java.io.Serializable;
 import java.util.Map;
 
-import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
+import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 
-public class RemLink implements IAmorphStateMessage {
+public class RemLink implements IAmorphStateMessage<NetworkLink> {
 
-	public RemLink() {
-		// TODO Auto-generated constructor stub
+	private static final long serialVersionUID = -1952719479509668319L;
+	private final String nodeId;
+	protected final NetworkLink networkLink;
+	
+	public RemLink(String NodeId, NetworkLink NetLink) {
+		this.nodeId = NodeId;
+		this.networkLink = NetLink;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.nodeId;
 	}
 
 	@Override
@@ -29,21 +32,18 @@ public class RemLink implements IAmorphStateMessage {
 	}
 
 	@Override
-	public Class getMessageType() {
-		// TODO Auto-generated method stub
-		return null;
+	public Class<RemLink> getMessageType() {
+		return RemLink.class;
 	}
 
 	@Override
-	public Class getPayloadType() {
-		// TODO Auto-generated method stub
-		return null;
+	public Class<NetworkLink> getPayloadType() {
+		return NetworkLink.class;
 	}
 
 	@Override
-	public Serializable getPayload() {
-		// TODO Auto-generated method stub
-		return null;
+	public NetworkLink getPayload() {
+		return this.networkLink;
 	}
 
 }
