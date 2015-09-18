@@ -167,9 +167,9 @@ public class ClusterService implements IAmorphousClusterService {
 
 		// Dispatch message handling to accordingly method
 		try {
-			ClusterService.class.getMethod("handleMessage" + msg.getMessageType().getSimpleName(), NodeAddress.getClass(), IAmorphClusterMessage.class).invoke(this, NodeAddress, msg);
+			ClusterService.class.getMethod("handleMessage" + msg.getMessageType().getSimpleName(), InetAddress.class, IAmorphClusterMessage.class).invoke(this, NodeAddress, msg);
 		} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
-			ClusterService.logger.error(e.getMessage());
+			ClusterService.logger.error("(" + e.getClass().getSimpleName() + ") Unable to find fitting method: " + e.getMessage());
 		}
 		
 	}

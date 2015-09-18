@@ -106,7 +106,7 @@ public class McastInboundSocket extends Thread {
 				this.srvMcastSocket.receive(rcvPacket);
 				nodeAddress = rcvPacket.getAddress();
 				
-				McastInboundSocket.logger.debug("Got a new packet from " + nodeAddress + " (" + rcvPacket.getData().length + " bytes)");
+				McastInboundSocket.logger.debug("Got a new packet from " + nodeAddress.getHostAddress() + " (" + rcvPacket.getData().length + " bytes)");
 				
 				// Process the packet
 				clusterComm.registerInboundMessage(nodeAddress, rcvPacket.getData());
