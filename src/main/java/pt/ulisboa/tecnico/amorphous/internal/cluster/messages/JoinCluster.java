@@ -12,9 +12,11 @@ public class JoinCluster implements IAmorphClusterMessage {
 	private static final long serialVersionUID = -652835016013601017L;
 	
 	private final String NodeId;
+	private final Boolean isAdvertisement;
 
-	public JoinCluster(String NodeId) {
+	public JoinCluster(String NodeId, Boolean isAdvertise) {
 		this.NodeId = NodeId;
+		this.isAdvertisement = isAdvertise;
 	}
 
 	@Override
@@ -31,6 +33,10 @@ public class JoinCluster implements IAmorphClusterMessage {
 	public Map<String,Integer> getVectorClock() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	public Boolean isAdvertisement(){
+		return this.isAdvertisement;
 	}
 
 }

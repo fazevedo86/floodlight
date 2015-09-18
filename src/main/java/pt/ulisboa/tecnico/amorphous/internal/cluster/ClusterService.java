@@ -63,7 +63,7 @@ public class ClusterService implements IAmorphousClusterService {
 		if(!this.isClusterServiceRunning()){
 			this.clusterComm.initCommunications();
 			try {
-				this.clusterComm.sendMessage(new JoinCluster(this.NodeId));
+				this.clusterComm.sendMessage(new JoinCluster(this.NodeId, true));
 			} catch (InvalidAmorphClusterMessageException e) {
 				ClusterService.logger.error(e.getMessage());
 				this.clusterComm.stopCommunications();
@@ -121,6 +121,7 @@ public class ClusterService implements IAmorphousClusterService {
 				GlobalStateService.getInstance().setClusterNodeDown(node.getNodeID());
 				this.nodes.put(node.getNodeIP(), node);
 				
+				ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
 				this.printClusterStatus();
 				
 				return true;
@@ -128,12 +129,13 @@ public class ClusterService implements IAmorphousClusterService {
 		} else {
 			this.nodes.put(node.getNodeIP(), node);
 			
+			ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
 			this.printClusterStatus();
 			
 			return true;
 		}
 			
-		ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
+		
 		
 		return false;
 	}
@@ -181,15 +183,17 @@ public class ClusterService implements IAmorphousClusterService {
 	
 	@SuppressWarnings("unused")
 	private void handleMessageJoinCluster(InetAddress origin, IAmorphClusterMessage message){
+		JoinCluster msg = (JoinCluster)message;
+		ClusterNode neighbor = new ClusterNode(origin, message.getOriginatingNodeId());
+			
 		ClusterService.logger.debug("Processing JoinCluster message from node " + message.getOriginatingNodeId() + "(" + origin.getHostAddress() + ")");
-		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) ){
+		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) && msg.isAdvertisement() ){
 			try {
-				this.clusterComm.sendMessage(new ClusterNode(origin, message.getOriginatingNodeId()), new JoinCluster(this.NodeId));
+				this.clusterComm.sendMessage(neighbor, new JoinCluster(this.NodeId, false));
 			} catch (InvalidAmorphClusterMessageException e) {
 				ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
 			}
 		}
-		
 	}
 
 	@SuppressWarnings("unused")
