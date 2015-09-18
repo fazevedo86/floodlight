@@ -43,7 +43,7 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode.NetworkNodeType;
 
-public class GlobalStateService extends Thread implements IAmorphGlobalStateService, IAmorphTopologyListner {
+public class GlobalStateService extends Thread implements IAmorphGlobalStateService, IAmorphTopologyListner, Comparable<IAmorphTopologyListner> {
 
 	class StateSyncMessage{
 		public final Integer messageId;
@@ -381,4 +381,9 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		}
 	}
 	//------------------------------------------------------------------------
+	
+	@Override
+	public int compareTo(IAmorphTopologyListner o){
+		return 1;
+	}
 }
