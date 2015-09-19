@@ -254,8 +254,13 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		// Check that at least one of the end-point datapaths is controlled locally
 		if((this.localSwitches.containsKey(src) && (this.localSwitches.containsKey(dst) || this.remoteSwitchAffinity.containsKey(dst))) || (this.localSwitches.containsKey(dst) && (this.localSwitches.containsKey(src) || this.remoteSwitchAffinity.containsKey(src)))){
-			if(!this.networkGraph.containsEdge(lnk))
-				success = this.networkGraph.addEdge(src, dst, lnk);
+			if(!this.networkGraph.containsEdge(lnk)){
+				try{
+					success = this.networkGraph.addEdge(src, dst, lnk);
+				} catch(IllegalArgumentException e){
+					LocalStateService.logger.error("Unable to add link (s" + lnk.getNodeA() + "-eth" + lnk.getNodeAPortNumber() + ":s" + lnk.getNodeB() + "-eth" + lnk.getNodeBPortNumber() + ") to the topology: " + e.getMessage());
+				}
+			}
 		}
 		
 		if(success){
@@ -284,7 +289,11 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				this.networkGraph.addVertex(dst);
 			
 			// Add the link
-			success = this.networkGraph.addEdge(src, dst, link);
+			try{
+				success = this.networkGraph.addEdge(src, dst, link);
+			} catch(IllegalArgumentException e){
+				LocalStateService.logger.error("Unable to add link (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ") to the topology: " + e.getMessage());
+			}
 		}
 		
 		if(success){

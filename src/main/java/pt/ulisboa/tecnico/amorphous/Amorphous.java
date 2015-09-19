@@ -161,6 +161,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
         
         // Boot the cluster
 		this.amorphcluster.startClusterService();
+		this.globalStateService.run();
 	}
 	
 	//------------------------------------------------------------------------

@@ -121,7 +121,7 @@ public class ClusterService implements IAmorphousClusterService {
 				GlobalStateService.getInstance().setClusterNodeDown(node.getNodeID());
 				this.nodes.put(node.getNodeIP(), node);
 				
-				ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
+				ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP().getHostAddress() + ") added!");
 				this.printClusterStatus();
 				
 				return true;
@@ -129,14 +129,12 @@ public class ClusterService implements IAmorphousClusterService {
 		} else {
 			this.nodes.put(node.getNodeIP(), node);
 			
-			ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP() + ") added!");
+			ClusterService.logger.debug("Node " + node.getNodeID() + "(" + node.getNodeIP().getHostAddress() + ") added!");
 			this.printClusterStatus();
 			
 			return true;
 		}
 			
-		
-		
 		return false;
 	}
 
@@ -153,7 +151,7 @@ public class ClusterService implements IAmorphousClusterService {
 	}
 
 	public void printClusterStatus(){
-		StringBuilder members = new StringBuilder("\n[AMORPHOUS] Clsuter membership:");
+		StringBuilder members = new StringBuilder("\n[AMORPHOUS] Cluster membership:");
 		for(ClusterNode node : this.nodes.values()){
 			members.append("\n" +  node.getNodeIP().getHostName() + " sessionId=" + node.getNodeID());
 		}
