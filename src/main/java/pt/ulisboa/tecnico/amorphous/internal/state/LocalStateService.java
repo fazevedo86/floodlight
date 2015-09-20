@@ -576,6 +576,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		this.networkGraph = newGraph;
 		this.remoteSwitchAffinity = SwitchAffinity;
 		
+		this.printNetworkGraph();
 		LocalStateService.logger.info("Local data structures imported from node " + fullSync.getOriginatingNodeId());
 	}
 
