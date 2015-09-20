@@ -22,6 +22,7 @@ import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMess
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.JoinCluster;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.LeaveCluster;
+import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.SyncReq;
 import pt.ulisboa.tecnico.amorphous.internal.state.GlobalStateService;
 
 public class ClusterService implements IAmorphousClusterService {
@@ -185,11 +186,24 @@ public class ClusterService implements IAmorphousClusterService {
 		ClusterNode neighbor = new ClusterNode(origin, message.getOriginatingNodeId());
 			
 		ClusterService.logger.debug("Processing JoinCluster message from node " + message.getOriginatingNodeId() + "(" + origin.getHostAddress() + ")");
-		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) && msg.isAdvertisement() ){
-			try {
-				this.clusterComm.sendMessage(neighbor, new JoinCluster(this.NodeId, false));
-			} catch (InvalidAmorphClusterMessageException e) {
-				ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
+		if( this.addClusterNode(new ClusterNode(origin, message.getOriginatingNodeId())) ){
+			// Say hello back
+			if(msg.isAdvertisement()){
+				try {
+					this.clusterComm.sendMessage(neighbor, new JoinCluster(this.NodeId, false));
+				} catch (InvalidAmorphClusterMessageException e) {
+					ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
+				}
+			} else {
+				// If its the first node replying to our hello, ask for full sync
+				if(this.nodes.size() == 1){
+					try {
+						this.clusterComm.sendMessage(neighbor, new SyncReq(this.NodeId));
+					} catch (InvalidAmorphClusterMessageException e) {
+						ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 	}
