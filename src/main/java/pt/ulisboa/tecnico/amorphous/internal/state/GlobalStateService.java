@@ -30,14 +30,15 @@ import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ipv4.ClusterCommunicator;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
-import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.SyncReq;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddHost;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddLink;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddOFSwitch;
+import pt.ulisboa.tecnico.amorphous.internal.state.messages.FullSync;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.IAmorphStateMessage;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemHost;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemLink;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemOFSwitch;
+import pt.ulisboa.tecnico.amorphous.internal.state.messages.SyncReq;
 import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
@@ -86,6 +87,8 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	private Integer oldestMessage;
 	// Global message counter
 	private AtomicInteger msgCounter;
+	// Full Sync protection mechanism
+	private String syncSourceNodeId = "";
 	
 	public static GlobalStateService getInstance() {
 		synchronized (GlobalStateService.class) {
@@ -155,21 +158,18 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	//							IAmorphGlobalStateService
 	//------------------------------------------------------------------------
 	@Override
-	public void requestFullSync(){
+	public void requestFullSync(ClusterNode sourceNode){
 		try {
-			// Define the sync source
-			ClusterNode syncSource = ClusterService.getInstance().getClusterNodes().iterator().next();
 			// Issue sync request
-			ClusterCommunicator.getInstance().sendMessage(syncSource, new SyncReq(ClusterService.getInstance().getNodeId()));
-			// TODO Should add a security check to the inbound sync message
+			this.amorphClusterService.getClusterComm().sendMessage(sourceNode, new SyncReq(this.amorphClusterService.getNodeId()));
+			GlobalStateService.logger.error("SyncReq sent to node " + sourceNode.getNodeIP().getHostAddress() );
+			
+			// Add a security check to the inbound sync message
+			this.syncSourceNodeId = sourceNode.getNodeID();
+			
 		} catch (InvalidAmorphClusterMessageException e) {
-			GlobalStateService.logger.error(e.getMessage());
+			GlobalStateService.logger.error("Failed to send SyncReq message to node " + sourceNode.getNodeIP().getHostAddress());
 		}
-	}
-	
-	@Override
-	public void issueFullSync(ClusterNode clusterNode){
-		// TODO implement it
 	}
 	
 	@Override
@@ -185,10 +185,10 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 			
 			// Validate Node
 			ClusterNode originatingNode = new ClusterNode(NodeAddress, msg.getOriginatingNodeId());
-			if(ClusterService.getInstance().isClusterNode(originatingNode)){
+			if(this.amorphClusterService.isClusterNode(originatingNode)){
 				// Dispatch message handling to accordingly method
 				try {
-					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), IAmorphClusterMessage.class).invoke(this, msg);
+					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
 				} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
 					GlobalStateService.logger.error(e.getMessage());
 				}
@@ -213,53 +213,70 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageAddOFSwitch(IAmorphClusterMessage message){
+	private void handleMessageAddOFSwitch(ClusterNode origin, IAmorphClusterMessage message){
 		AddOFSwitch msg = (AddOFSwitch)message;
 		GlobalStateService.logger.info("Received a new AddSwitch message from node " + msg.getOriginatingNodeId());
 		this.amorphTopologyManager.addRemoteSwitch(msg.getPayload(), message.getOriginatingNodeId());
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageRemOFSwitch(IAmorphClusterMessage message){
+	private void handleMessageRemOFSwitch(ClusterNode origin, IAmorphClusterMessage message){
 		RemOFSwitch msg = (RemOFSwitch)message;
 		GlobalStateService.logger.info("Received a new RemoveSwitch message from node " + msg.getOriginatingNodeId());
 		this.amorphTopologyManager.removeRemoteSwitch(msg.getPayload(), msg.getOriginatingNodeId());
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageAddLink(IAmorphClusterMessage message){
+	private void handleMessageAddLink(ClusterNode origin, IAmorphClusterMessage message){
 		AddLink msg = (AddLink)message;
 		GlobalStateService.logger.info("Received a new AddLink message from node " + msg.getOriginatingNodeId());
 		this.amorphTopologyManager.addRemoteSwitchLink(msg.getPayload(), msg.getOriginatingNodeId());
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageRemLink(IAmorphClusterMessage message){
+	private void handleMessageRemLink(ClusterNode origin, IAmorphClusterMessage message){
 		RemLink msg = (RemLink)message;
 		GlobalStateService.logger.info("Received a new RemoveLink message from node " + msg.getOriginatingNodeId());
 		this.amorphTopologyManager.removeRemoteSwitchLink(msg.getPayload(), msg.getOriginatingNodeId());
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageAddHost(IAmorphClusterMessage message){
+	private void handleMessageAddHost(ClusterNode origin, IAmorphClusterMessage message){
 		AddHost msg = (AddHost)message;
 		GlobalStateService.logger.info("Received a new AddHost message from node " + message.getOriginatingNodeId());
 		this.amorphTopologyManager.addRemoteHost(msg.getPayload(), msg.getAttachmentPoint(), msg.getOriginatingNodeId());
 	}
 	
 	@SuppressWarnings("unused")
-	private void handleMessageRemHost(IAmorphClusterMessage message){
+	private void handleMessageRemHost(ClusterNode origin, IAmorphClusterMessage message){
 		RemHost msg = (RemHost)message;
 		GlobalStateService.logger.info("Received a new RemoveHost message from node " + msg.getOriginatingNodeId());
 		this.amorphTopologyManager.removeRemoteHost(msg.getPayload(), msg.getOriginatingNodeId());
 	}
 
-	private void handleMessageReqSync(IAmorphClusterMessage message){
-		SyncReq msg = (SyncReq)message;
-		GlobalStateService.logger.info("Received a new SyncReq message from node " + msg.getOriginatingNodeId());
-		// TODO
+	@SuppressWarnings("unused")
+	private void handleMessageReqSync(ClusterNode origin, IAmorphClusterMessage message){
+		GlobalStateService.logger.info("Received a new SyncReq message from node " + message.getOriginatingNodeId());
+		
+		FullSync replyMsg = LocalStateService.getInstance().getFullClusterState();
+		try {
+			this.amorphClusterService.getClusterComm().sendMessage(origin, replyMsg);
+		} catch (InvalidAmorphClusterMessageException e) {
+			GlobalStateService.logger.error("Failed to send FullSync message: " + e.getMessage());
+		}
 	}
 
+	@SuppressWarnings("unused")
+	private void handleMessageFullSync(ClusterNode origin, IAmorphClusterMessage message){
+		FullSync msg = (FullSync)message;
+		
+		if(this.syncSourceNodeId.equals(msg.getOriginatingNodeId())){
+			GlobalStateService.logger.info("Received a new FullSync message from node " + message.getOriginatingNodeId());
+			LocalStateService.getInstance().setFullClusterState(msg);
+		} else {
+			GlobalStateService.logger.info("Discarding unexpected FullSync message from node " + message.getOriginatingNodeId());
+		}
+	}
 	
 	//------------------------------------------------------------------------
 	//							IAmorphTopologyListner

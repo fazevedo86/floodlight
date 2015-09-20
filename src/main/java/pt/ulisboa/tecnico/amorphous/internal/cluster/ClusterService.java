@@ -22,8 +22,8 @@ import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMess
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.JoinCluster;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.LeaveCluster;
-import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.SyncReq;
 import pt.ulisboa.tecnico.amorphous.internal.state.GlobalStateService;
+import pt.ulisboa.tecnico.amorphous.internal.state.messages.SyncReq;
 
 public class ClusterService implements IAmorphousClusterService {
 	protected static final Logger logger = LoggerFactory.getLogger(ClusterService.class);
@@ -56,6 +56,9 @@ public class ClusterService implements IAmorphousClusterService {
 		this.NodeId = NodeId;
 	}
 
+	//------------------------------------------------------------------------
+	//							IAmorphousClusterService
+	//------------------------------------------------------------------------
 	
 	/*** Cluster Management ***/
 
@@ -98,9 +101,6 @@ public class ClusterService implements IAmorphousClusterService {
 		return this.NodeId;
 	}
 	
-	
-	
-	
 	/*** Node Management ***/
 
 	@Override
@@ -112,6 +112,28 @@ public class ClusterService implements IAmorphousClusterService {
 	public Collection<ClusterNode> getClusterNodes() {
 		return Collections.unmodifiableCollection(this.nodes.values());
 	}
+	
+	/*** Message handling ***/
+
+	@Override
+	public void processClusterMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) {
+		ClusterService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + "(" + NodeAddress.getHostAddress() + ")");
+
+		// Dispatch message handling to accordingly method
+		try {
+			ClusterService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), InetAddress.class, IAmorphClusterMessage.class).invoke(this, NodeAddress, msg);
+		} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
+			ClusterService.logger.error("(" + e.getClass().getSimpleName() + ") Unable to find fitting method: " + e.getMessage());
+		}
+		
+	}
+	
+	@Override
+	public ClusterCommunicator getClusterComm(){
+		return this.clusterComm;
+	}
+	
+	//------------------------------------------------------------------------
 	
 	private boolean addClusterNode(ClusterNode node) {
 		if(this.isClusterNode(node)){
@@ -159,27 +181,7 @@ public class ClusterService implements IAmorphousClusterService {
 		members.append("\n");
 		System.out.println(members);
 	}
-	
-	/*** Message handling ***/
 
-	@Override
-	public void processClusterMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) {
-		ClusterService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + "(" + NodeAddress.getHostAddress() + ")");
-
-		// Dispatch message handling to accordingly method
-		try {
-			ClusterService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), InetAddress.class, IAmorphClusterMessage.class).invoke(this, NodeAddress, msg);
-		} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
-			ClusterService.logger.error("(" + e.getClass().getSimpleName() + ") Unable to find fitting method: " + e.getMessage());
-		}
-		
-	}
-	
-	@Override
-	public ClusterCommunicator getClusterComm(){
-		return this.clusterComm;
-	}
-	
 	@SuppressWarnings("unused")
 	private void handleMessageJoinCluster(InetAddress origin, IAmorphClusterMessage message){
 		JoinCluster msg = (JoinCluster)message;
@@ -197,13 +199,7 @@ public class ClusterService implements IAmorphousClusterService {
 			} else {
 				// If its the first node replying to our hello, ask for full sync
 				if(this.nodes.size() == 1){
-					try {
-						this.clusterComm.sendMessage(neighbor, new SyncReq(this.NodeId));
-						ClusterService.logger.error("SyncReq sent to node " + neighbor.getNodeIP().getHostAddress() );
-					} catch (InvalidAmorphClusterMessageException e) {
-						ClusterService.logger.error("Failed to send SyncReq message to node " + neighbor.getNodeIP().getHostAddress());
-						e.printStackTrace();
-					}
+					GlobalStateService.getInstance().requestFullSync(neighbor);
 				}
 			}
 		}
@@ -212,14 +208,6 @@ public class ClusterService implements IAmorphousClusterService {
 	@SuppressWarnings("unused")
 	private void handleMessageLeaveCluster(InetAddress origin, IAmorphClusterMessage message){
 		this.removeClusterNode(new ClusterNode(origin, message.getOriginatingNodeId()));
-	}
-	
-	@SuppressWarnings("unused")
-	private void handleMessageSyncReq(InetAddress origin, IAmorphClusterMessage message){
-		ClusterNode targetNode = new ClusterNode(origin, message.getOriginatingNodeId());
-		if(this.isClusterNode(targetNode)){
-			GlobalStateService.getInstance().issueFullSync(targetNode);
-		}
 	}
 	
 }

@@ -79,13 +79,7 @@ public interface IAmorphGlobalStateService extends IFloodlightService {
 	/**
 	 * Request for a full database sync from another node in the cluster
 	 */
-	public void requestFullSync();
-	
-	/**
-	 * Send a full database sync to another node in the cluster
-	 * @param nodeId The node to which the origin database to sync from
-	 */
-	public void issueFullSync(ClusterNode clusterNode);
+	public void requestFullSync(ClusterNode sourceNode);
 	
 	/**
 	 * Process whichever actions necessaries upon notification of a node leaving the cluster
