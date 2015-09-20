@@ -199,8 +199,9 @@ public class ClusterService implements IAmorphousClusterService {
 				if(this.nodes.size() == 1){
 					try {
 						this.clusterComm.sendMessage(neighbor, new SyncReq(this.NodeId));
+						ClusterService.logger.error("SyncReq sent to node " + neighbor.getNodeIP().getHostAddress() );
 					} catch (InvalidAmorphClusterMessageException e) {
-						ClusterService.logger.error("Failed to reply to JoinCluster message from " + origin.getHostAddress());
+						ClusterService.logger.error("Failed to send SyncReq message to node " + neighbor.getNodeIP().getHostAddress());
 						e.printStackTrace();
 					}
 				}
