@@ -71,7 +71,7 @@ public class McastInboundSocket extends Thread {
 				}	
 			}
 		}
-		
+
 		return this.isRunning.get();
 	}
 	

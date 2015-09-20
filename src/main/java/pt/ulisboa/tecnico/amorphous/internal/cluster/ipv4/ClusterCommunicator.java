@@ -88,6 +88,7 @@ public class ClusterCommunicator extends Thread {
 	 */
 	public boolean initCommunications() {
 		// Boot the multicast group listner
+		this.inMcastSocket.startSocket();
 		if( this.inMcastSocket.startSocket() && this.outMcastSocket.startSocket() && this.inSocket.startSocket() ){
 			this.inMcastSocket.start();
 			this.outMcastSocket.start();

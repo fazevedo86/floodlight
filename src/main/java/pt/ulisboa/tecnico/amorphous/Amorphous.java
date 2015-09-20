@@ -160,8 +160,13 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
         this.deviceManagerService.addListener(this);
         
         // Boot the cluster
-		this.amorphcluster.startClusterService();
-		this.globalStateService.run();
+		if(this.amorphcluster.startClusterService()) {
+			Amorphous.logger.info("Amorphous cluster successfully initialized!");
+			this.globalStateService.start();
+		} else {
+			Amorphous.logger.error("Fatal error while booting Amorphous: Unable to initialize cluster service");
+		}
+		
 	}
 	
 	//------------------------------------------------------------------------

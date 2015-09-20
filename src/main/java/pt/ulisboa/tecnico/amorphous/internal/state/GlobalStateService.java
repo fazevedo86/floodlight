@@ -256,7 +256,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 
 	private void handleMessageReqSync(IAmorphClusterMessage message){
 		SyncReq msg = (SyncReq)message;
-		GlobalStateService.logger.info("Received a new AddHost message from node " + msg.getOriginatingNodeId());
+		GlobalStateService.logger.info("Received a new SyncReq message from node " + msg.getOriginatingNodeId());
 		// TODO
 	}
 
