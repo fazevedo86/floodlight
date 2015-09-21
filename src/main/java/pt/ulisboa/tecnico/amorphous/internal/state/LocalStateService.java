@@ -281,7 +281,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		boolean success = false;
 		
 		NetworkNode src = new NetworkNode(link.getNodeA(),NetworkNodeType.OFSWITCH);
-		NetworkNode dst = new NetworkNode(link.getNodeA(),NetworkNodeType.OFSWITCH);
+		NetworkNode dst = new NetworkNode(link.getNodeB(),NetworkNodeType.OFSWITCH);
 		
 		if( !this.isSwitchLinkRegistered(link.getNodeA(), link.getNodeAPortNumber(), link.getNodeB(), link.getNodeBPortNumber()) ){
 			// Make sure both nodes belong to the network graph beforehand
@@ -549,10 +549,9 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			// Update the data structures with local nodes
 			for(NetworkNode ofswitch : this.localSwitches.keySet()){
 				// Cleanup
-				if(newGraph.containsVertex(ofswitch)){
-					SwitchAffinity.remove(ofswitch);
-					newGraph.removeVertex(ofswitch);
-				}
+				SwitchAffinity.remove(ofswitch);
+				newGraph.removeVertex(ofswitch);
+
 				// Register locally managed nodes
 				newGraph.addVertex(ofswitch);
 				SwitchAffinity.put(ofswitch, myID);

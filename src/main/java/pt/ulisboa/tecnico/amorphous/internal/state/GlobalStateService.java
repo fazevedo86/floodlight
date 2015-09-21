@@ -273,6 +273,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		if(this.syncSourceNodeId.equals(msg.getOriginatingNodeId())){
 			GlobalStateService.logger.info("Received a new FullSync message from node " + message.getOriginatingNodeId());
 			LocalStateService.getInstance().setFullClusterState(msg);
+			this.syncSourceNodeId = "";
 		} else {
 			GlobalStateService.logger.info("Discarding unexpected FullSync message from node " + message.getOriginatingNodeId());
 		}
