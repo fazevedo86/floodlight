@@ -45,8 +45,8 @@ public class FullSync implements IAmorphStateMessage {
 	}
 
 	@Override
-	public Class getMessageType() {
-		return null;
+	public Class<FullSync> getMessageType() {
+		return FullSync.class;
 	}
 
 	@Override

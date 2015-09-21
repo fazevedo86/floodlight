@@ -32,8 +32,8 @@ public class SyncReq implements IAmorphStateMessage {
 	}
 
 	@Override
-	public Class getMessageType() {
-		return null;
+	public Class<SyncReq> getMessageType() {
+		return SyncReq.class;
 	}
 
 	@Override
