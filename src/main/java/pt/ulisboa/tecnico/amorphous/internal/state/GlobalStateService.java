@@ -190,7 +190,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 				try {
 					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
 				} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e){
-					GlobalStateService.logger.error(e.getMessage());
+					GlobalStateService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
 				}
 			} else {
 				GlobalStateService.logger.warn("Received a state sync message (" + msg.getMessageType() + ") from a node that does not belong to the cluster (" + NodeAddress.getHostAddress() + ")");
@@ -255,7 +255,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 
 	@SuppressWarnings("unused")
-	private void handleMessageReqSync(ClusterNode origin, IAmorphClusterMessage message){
+	private void handleMessageSyncReq(ClusterNode origin, IAmorphClusterMessage message){
 		GlobalStateService.logger.info("Received a new SyncReq message from node " + message.getOriginatingNodeId());
 		
 		FullSync replyMsg = LocalStateService.getInstance().getFullClusterState();
