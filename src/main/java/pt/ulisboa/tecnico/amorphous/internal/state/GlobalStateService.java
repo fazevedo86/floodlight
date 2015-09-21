@@ -181,7 +181,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	public void processStateMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) throws InvalidAmorphClusterMessageException {
 	
 		if(msg instanceof IAmorphStateMessage){
-			GlobalStateService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + "(" + NodeAddress + ")");
+			GlobalStateService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + " (" + NodeAddress.getHostName() + ")");
 			
 			// Validate Node
 			ClusterNode originatingNode = new ClusterNode(NodeAddress, msg.getOriginatingNodeId());
