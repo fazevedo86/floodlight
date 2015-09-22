@@ -162,6 +162,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		// Assume that if we get a new local registration then it's best to delete the switch beforehand
 		if(this.isSwitchRegistered(node)){
 			this.removeSwitch(node);
+			this.remoteSwitchAffinity.remove(node);
 		}
 		
 		if(this.networkGraph.addVertex(node)){
@@ -222,7 +223,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	public synchronized boolean removeRemoteSwitch(NetworkNode node, String AmorphousNodeId){
 		if(this.remoteSwitchAffinity.containsKey(node) && this.remoteSwitchAffinity.get(node).equals(AmorphousNodeId)){
 			this.removeSwitchHosts(node);
-			this.remoteSwitchAffinity.remove(node.getNodeId());
+			this.remoteSwitchAffinity.remove(node);
 			this.networkGraph.removeVertex(node);
 			
 			// fire event listners
