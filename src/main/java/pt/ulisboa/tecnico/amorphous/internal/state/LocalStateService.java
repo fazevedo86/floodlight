@@ -634,7 +634,9 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	private void removeSwitchHosts(NetworkNode node){
-		Set<NetworkLink> connectedNodes = this.networkGraph.edgesOf(node);
+		// Must create a copy in order to alter the original data set
+		Set<NetworkLink> connectedNodes = new HashSet<NetworkLink>();
+		connectedNodes.addAll(this.networkGraph.edgesOf(node));
 		
 		for(NetworkLink edge : connectedNodes){
 			NetworkNode peer = (this.networkGraph.getEdgeSource(edge).compareTo(node) == 0 ? this.networkGraph.getEdgeSource(edge) : this.networkGraph.getEdgeTarget(edge));

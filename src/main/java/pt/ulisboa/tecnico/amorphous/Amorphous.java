@@ -147,6 +147,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 		this.shutdownService.registerShutdownListener(new IShutdownListener() {
         	@Override
         	public void floodlightIsShuttingDown(){
+        		System.out.println("\n\nEXECUTE ORDER 66\n\n");
         		Amorphous.logger.info("EXECUTE ORDER 66");
         		Amorphous.this.amorphcluster.stopClusterService();
         	}
