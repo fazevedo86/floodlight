@@ -18,6 +18,7 @@ public class NetworkLink extends DefaultWeightedEdge implements Comparable<Netwo
 		this.nodeB = node2;
 		this.nodeAPortNumber = node1PortNumber;
 		this.nodeBPortNumber = node2PortNumber;
+		this.bandwidth = Bandwidth;
 	}
 	
 	public Long getNodeA(){

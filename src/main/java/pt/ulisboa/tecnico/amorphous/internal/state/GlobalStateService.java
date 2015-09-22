@@ -298,7 +298,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 
 	@Override
 	public void switchRemoved(NetworkNode ofswitch) {
-		GlobalStateService.logger.info("Queueing a new AddSwitch message to the cluster (ofswitch=" + DatapathId.of(ofswitch.getNodeId()) + ")");
+		GlobalStateService.logger.info("Queueing a new RemOFSwitch message to the cluster (ofswitch=" + DatapathId.of(ofswitch.getNodeId()) + ")");
 		RemOFSwitch msg = new RemOFSwitch(this.amorphClusterService.getNodeId(), ofswitch);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
