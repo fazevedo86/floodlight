@@ -291,10 +291,14 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 					success = this.networkGraph.addEdge(src, dst, link);
 					
 					// Set weights
-					if(link.getLinkBandwidth() != 0L)
-						this.networkGraph.setEdgeWeight(link, (Double)(1/link.getLinkBandwidth().doubleValue()) );
-					else
+					try{
+						if(link.getLinkBandwidth() != 0L)
+							this.networkGraph.setEdgeWeight(link, (Double)(1/link.getLinkBandwidth().doubleValue()) );
+						else
+							this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
+					} catch(NullPointerException npe){
 						this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
+					}
 					
 				} catch(IllegalArgumentException e){
 					LocalStateService.logger.error("Unable to add link (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ") to the topology: " + e.getMessage());
