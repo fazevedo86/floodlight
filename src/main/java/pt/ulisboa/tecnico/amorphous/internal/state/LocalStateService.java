@@ -252,11 +252,12 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 					
 					// Set weights
 					try{
-						if(lnk.getLinkBandwidth() != 0L)
+						if(!lnk.getLinkBandwidth().equals(Long.valueOf(0L)))
 							this.networkGraph.setEdgeWeight(lnk, (Double)(1/lnk.getLinkBandwidth().doubleValue()) );
 						else
 							this.networkGraph.setEdgeWeight(lnk, Double.MAX_VALUE);
 					} catch(NullPointerException e){
+						LocalStateService.logger.error("Unable obtain link bandwidth (s" + lnk.getNodeA() + "-eth" + lnk.getNodeAPortNumber() + ":s" + lnk.getNodeB() + "-eth" + lnk.getNodeBPortNumber() + "). Setting default BW.");
 						this.networkGraph.setEdgeWeight(lnk, Double.MAX_VALUE);
 					}
 
@@ -292,11 +293,12 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 					
 					// Set weights
 					try{
-						if(link.getLinkBandwidth() != 0L)
+						if(!link.getLinkBandwidth().equals(Long.valueOf(0L)))
 							this.networkGraph.setEdgeWeight(link, (Double)(1/link.getLinkBandwidth().doubleValue()) );
 						else
 							this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
 					} catch(NullPointerException npe){
+						LocalStateService.logger.error("Unable obtain link bandwidth (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + "). Setting default BW.");
 						this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
 					}
 					
