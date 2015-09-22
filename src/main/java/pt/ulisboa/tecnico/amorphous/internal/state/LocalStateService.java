@@ -672,7 +672,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		return new NetworkLink(link.getSrc().getLong(), link.getSrcPort().getPortNumber(),
 				link.getDst().getLong(), link.getDstPort().getPortNumber(),
-				linkBandwidth);
+				Long.valueOf(linkBandwidth));
 	}
 	
 	private Link linkFromNetworkLink(NetworkLink link){
