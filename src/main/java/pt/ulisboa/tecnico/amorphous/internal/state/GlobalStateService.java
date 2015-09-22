@@ -190,7 +190,8 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 				try {
 					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
 				} catch(InvocationTargetException ite){
-					GlobalStateService.logger.error(ite.getClass().getSimpleName() + " (" + ite.getCause().getClass().getSimpleName() + "): " + ite.getCause().getMessage());
+					GlobalStateService.logger.error(ite.getClass().getSimpleName() + ": " + ite.getCause().getClass().getSimpleName() + "");
+					ite.getCause().printStackTrace();
 				} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | SecurityException e){
 					GlobalStateService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
 				}
