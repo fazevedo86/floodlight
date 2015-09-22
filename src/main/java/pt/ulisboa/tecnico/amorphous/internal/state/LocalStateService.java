@@ -244,7 +244,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		NetworkLink lnk = this.networkLinkFromLink(link);
 		
 		// Check that at least one of the end-point datapaths is controlled locally
-		if((this.localSwitches.containsKey(src) && (this.localSwitches.containsKey(dst) || this.remoteSwitchAffinity.containsKey(dst))) || (this.localSwitches.containsKey(dst) && (this.localSwitches.containsKey(src) || this.remoteSwitchAffinity.containsKey(src)))){
+		if( (!this.networkGraph.containsEdge(lnk)) && ( (this.localSwitches.containsKey(src) && (this.localSwitches.containsKey(dst) || this.remoteSwitchAffinity.containsKey(dst))) || (this.localSwitches.containsKey(dst) && (this.localSwitches.containsKey(src) || this.remoteSwitchAffinity.containsKey(src))) ) ){
 			if(!this.networkGraph.containsEdge(lnk)){
 				try{
 					success = this.networkGraph.addEdge(src, dst, lnk);
@@ -283,25 +283,23 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		NetworkNode src = new NetworkNode(link.getNodeA(),NetworkNodeType.OFSWITCH);
 		NetworkNode dst = new NetworkNode(link.getNodeB(),NetworkNodeType.OFSWITCH);
 		
-		if( !this.isSwitchLinkRegistered(link.getNodeA(), link.getNodeAPortNumber(), link.getNodeB(), link.getNodeBPortNumber()) ){
-			// Make sure both nodes belong to the network graph beforehand
-			if(!this.networkGraph.containsVertex(src))
-				this.networkGraph.addVertex(src);
-			if(!this.networkGraph.containsVertex(dst))
-				this.networkGraph.addVertex(dst);
-			
-			// Add the link
-			try{
-				success = this.networkGraph.addEdge(src, dst, link);
-				
-				// Set weights
-				if(link.getLinkBandwidth() != 0L)
-					this.networkGraph.setEdgeWeight(link, (Double)(1/link.getLinkBandwidth().doubleValue()) );
-				else
-					this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
-				
-			} catch(IllegalArgumentException e){
-				LocalStateService.logger.error("Unable to add link (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ") to the topology: " + e.getMessage());
+		if( (!this.networkGraph.containsEdge(link)) ){
+			if(this.networkGraph.containsVertex(src) && this.networkGraph.containsVertex(dst)){
+				// Add the link
+				try{
+					success = this.networkGraph.addEdge(src, dst, link);
+					
+					// Set weights
+					if(link.getLinkBandwidth() != 0L)
+						this.networkGraph.setEdgeWeight(link, (Double)(1/link.getLinkBandwidth().doubleValue()) );
+					else
+						this.networkGraph.setEdgeWeight(link, Double.MAX_VALUE);
+					
+				} catch(IllegalArgumentException e){
+					LocalStateService.logger.error("Unable to add link (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ") to the topology: " + e.getMessage());
+				}
+			} else {
+				LocalStateService.logger.error("Unable to add link (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ") to the topology: at least one of the endpoints is not known");
 			}
 		}
 		
