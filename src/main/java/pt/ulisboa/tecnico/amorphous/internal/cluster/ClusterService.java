@@ -233,7 +233,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	public void run(){
 		while(this.isRunning || this.isClusterServiceRunning()){
 			Long currTime = System.currentTimeMillis();
-			if( (this.latestHello - currTime) >= this.helloInterval ){
+			if( (currTime - this.latestHello) >= this.helloInterval ){
 				try {
 					this.sendHello();
 				} catch (InvalidAmorphClusterMessageException e) {
