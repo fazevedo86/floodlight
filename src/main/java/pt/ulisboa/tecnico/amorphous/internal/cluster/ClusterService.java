@@ -36,7 +36,8 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	public final ClusterCommunicator clusterComm;
 	
 	protected ConcurrentMap<InetAddress,ClusterNode> nodes;
-	protected Long latestHello;
+	protected volatile Long latestHello;
+	protected volatile boolean isRunning; 
 	
 	public static IAmorphousClusterService getInstance(){
 		return ClusterService.instance;
@@ -60,6 +61,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 				
 		this.NodeId = NodeId;
 		this.helloInterval = HelloInterval;
+		this.isRunning = false;
 	}
 
 	//------------------------------------------------------------------------
@@ -73,6 +75,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 		if(!this.isClusterServiceRunning()){
 			this.clusterComm.initCommunications();
 			try {
+				this.isRunning = true;
 				this.sendHello();
 				this.start();
 			} catch (InvalidAmorphClusterMessageException e) {
@@ -88,6 +91,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	public boolean stopClusterService() {
 		if(this.isClusterServiceRunning()){
 			try {
+				this.isRunning = false;
 				this.clusterComm.sendMessage(new LeaveCluster(this.NodeId));
 			} catch (InvalidAmorphClusterMessageException e) {
 				ClusterService.logger.error(e.getMessage());
@@ -227,7 +231,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	
 	@Override
 	public void run(){
-		while(this.isClusterServiceRunning()){
+		while(this.isRunning || this.isClusterServiceRunning()){
 			Long currTime = System.currentTimeMillis();
 			if( (this.latestHello - currTime) >= this.helloInterval ){
 				try {
