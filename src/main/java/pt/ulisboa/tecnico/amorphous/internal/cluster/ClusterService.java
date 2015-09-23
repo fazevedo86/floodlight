@@ -227,25 +227,27 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	
 	@Override
 	public void run(){
-		Long currTime = System.currentTimeMillis();
-		if( (this.latestHello - currTime) >= this.helloInterval ){
-			try {
-				this.sendHello();
-			} catch (InvalidAmorphClusterMessageException e) {
-				ClusterService.logger.error(e.getClass().getSimpleName() + " occured while sending periodic Hello: " + e.getMessage());
-			}
-			for(ClusterNode node : this.nodes.values()){
-				if( node.getNodeAge() >= (this.helloInterval * ClusterService.MAX_FAILED_HELLO) ){
-					this.removeClusterNode(node);
+		while(this.isClusterServiceRunning()){
+			Long currTime = System.currentTimeMillis();
+			if( (this.latestHello - currTime) >= this.helloInterval ){
+				try {
+					this.sendHello();
+				} catch (InvalidAmorphClusterMessageException e) {
+					ClusterService.logger.error(e.getClass().getSimpleName() + " occured while sending periodic Hello: " + e.getMessage());
+				}
+				for(ClusterNode node : this.nodes.values()){
+					if( node.getNodeAge() >= (this.helloInterval * ClusterService.MAX_FAILED_HELLO) ){
+						this.removeClusterNode(node);
+					}
 				}
 			}
-		}
-		
-		// Sleep it out
-		try {
-			sleep(this.helloInterval);
-		} catch (InterruptedException e) {
-			ClusterService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+			
+			// Sleep it out
+			try {
+				sleep(this.helloInterval);
+			} catch (InterruptedException e) {
+				ClusterService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+			}
 		}
 	}
 }
