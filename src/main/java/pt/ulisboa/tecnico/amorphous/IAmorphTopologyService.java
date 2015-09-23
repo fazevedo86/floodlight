@@ -5,11 +5,16 @@
 
 package pt.ulisboa.tecnico.amorphous;
 
+import java.util.List;
+
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
+import pt.ulisboa.tecnico.amorphous.types.NetworkHop;
+import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 
 public interface IAmorphTopologyService extends IFloodlightService {
@@ -62,5 +67,28 @@ public interface IAmorphTopologyService extends IFloodlightService {
 	 * @param src The event source
 	 */
 	public void addTopologyListner(IAmorphTopologyListner listener, EventSource src);
+	
+	/**
+	 * Asserts if the OFSwitch is managened locally or not
+	 * @param OFSwitch The switch
+	 * @return The cluster node managing the switch. 
+	 */
+	public boolean isSwitchManagedLocally(NetworkNode OFSwitch);
+	
+	/**
+	 * Identifies the controller currently managing the OFSwitch
+	 * @param OFSwitch The switch
+	 * @return The cluster node managing the switch. 
+	 */
+	public ClusterNode getSwitchManager(NetworkNode OFSwitch);
+	
+	/**
+	 * Gets an ordered list of the network hops
+	 * 
+	 * @param origin The origin host
+	 * @param destination The destination host
+	 * @return
+	 */
+	public List<NetworkHop> getNetworkPath(NetworkHost origin, NetworkHost destination);
 
 }

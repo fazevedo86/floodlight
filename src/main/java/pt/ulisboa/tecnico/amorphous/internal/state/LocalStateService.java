@@ -11,8 +11,10 @@
 package pt.ulisboa.tecnico.amorphous.internal.state;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,7 +27,11 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.routing.Link;
 
+import org.jgrapht.Graph;
+import org.jgrapht.GraphPath;
+import org.jgrapht.Graphs;
 import org.jgrapht.UndirectedGraph;
+import org.jgrapht.alg.DijkstraShortestPath;
 import org.jgrapht.graph.Multigraph;
 import org.jgrapht.graph.ParanoidGraph;
 import org.jgrapht.graph.WeightedMultigraph;
@@ -40,8 +46,11 @@ import pt.ulisboa.tecnico.amorphous.IAmorphTopologyListner;
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService.UpdateSource;
+import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.FullSync;
+import pt.ulisboa.tecnico.amorphous.types.NetworkHop;
+import pt.ulisboa.tecnico.amorphous.types.NetworkHop.StreamDirection;
 import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
@@ -67,19 +76,20 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	// Network graph (switches + devices)
 	protected volatile WeightedMultigraph<NetworkNode, NetworkLink> networkGraph;
 	
-	// OFSwitch remote controller affinity
+	// OFSwitches remote controller affinity
 	protected volatile Map<NetworkNode, String> remoteSwitchAffinity;
 	
-	// Local switch map
+	// Local OFSwitches map
 	protected volatile Map<NetworkNode, DatapathId> localSwitches;
+	// Local hosts map
 	protected volatile Map<Long, NetworkHost> localHosts;
 	
 	
 	// Network policies per floodlight module
 	protected volatile Map<Class<? extends IFloodlightModule>, Serializable> networkPolicies;
 	
+	// Event listners
 	private volatile Set<IAmorphTopologyListner> remoteEventListeners;
-	
 	private volatile Set<IAmorphTopologyListner> localEventListeners;
 	
 	/**
@@ -131,6 +141,18 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		return this.networkGraph.containsEdge(link);
 	}
 	
+	public boolean isSwitchManagedLocally(NetworkNode OFSwitch){
+		return this.localSwitches.containsKey(OFSwitch);
+	}
+	
+	public ClusterNode getSwitchManager(NetworkNode OFSwitch){
+		if(this.remoteSwitchAffinity.containsKey(OFSwitch)){
+			return ClusterService.getInstance().getClusterNode(this.remoteSwitchAffinity.get(OFSwitch));
+		}
+		
+		return null;
+	}
+	
 	@Override
 	public void addTopologyListner(IAmorphTopologyListner listener, EventSource src){
 		switch (src) {
@@ -148,6 +170,44 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		}
 	}
 
+	public List<NetworkHop> getNetworkPath(NetworkHost origin, NetworkHost destination){
+		
+		DijkstraShortestPath<NetworkNode, NetworkLink> dijkstra = new DijkstraShortestPath<NetworkNode, NetworkLink>(this.networkGraph, origin, destination);
+		List<NetworkNode> nodes = Graphs.getPathVertexList(dijkstra.getPath());
+		List<NetworkLink> links = dijkstra.getPath().getEdgeList();
+		
+		List<NetworkHop> path = new ArrayList<NetworkHop>((nodes.size() - 2) * 2);
+		
+		for(int n = 0; n < nodes.size() - 1; n++){
+			NetworkLink link = links.get(n);
+			NetworkNode src = nodes.get(n), dst = nodes.get(n+1);
+			Integer srcPort = -1, dstPort = -1;
+			
+			if(link.getNodeA().equals(src.getNodeId())){
+				srcPort = link.getNodeAPortNumber();
+				dstPort = link.getNodeBPortNumber();
+			} else {
+				srcPort = link.getNodeBPortNumber();
+				dstPort = link.getNodeAPortNumber();
+			}
+			NetworkHop hop;
+			
+			if(src.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+				hop = new NetworkHop(src, srcPort, StreamDirection.OUTBOUND); 
+				path.add(hop);
+			}
+			
+			if(dst.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+				hop = new NetworkHop(dst, dstPort, StreamDirection.INBOUND);
+				path.add(hop);
+			}
+		}
+		
+		this.printNetworkPath(origin, destination, path);
+
+		return path;
+	}
+	
 	//------------------------------------------------------------------------
 	
 	
@@ -417,6 +477,9 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			}
 		}
 		
+		if(this.localHosts.size() > 1)
+			this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], (NetworkHost)this.localHosts.values().toArray()[1]);
+		
 		return success;
 	}
 
@@ -588,6 +651,18 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		LocalStateService.logger.info("Local data structures imported from node " + fullSync.getOriginatingNodeId());
 	}
 
+	public void printNetworkPath(NetworkHost origin, NetworkHost destination, List<NetworkHop> path){
+		
+		StringBuilder output = new StringBuilder("\n\n[AMORPHOUS] Calculated path from h" + origin.getNodeId() + " to h" + destination.getNodeId() + "\n");
+		
+		for(int i = path.size() - 1; i >= 0; i--)
+			output.append(i + ") s" + path.get(i).getSwitch().getNodeId() + "-eth" + path.get(i).getSwitchPort() + " " + path.get(i).getDirection() + "\n");
+		
+		output.append("\n");
+		
+		System.out.println(output);
+	}
+	
 	public void printNetworkGraph(){
 		StringBuilder affinity = new StringBuilder("[AMORPHOUS] OFSwitch controller affinity:");
 		System.out.println("\n");

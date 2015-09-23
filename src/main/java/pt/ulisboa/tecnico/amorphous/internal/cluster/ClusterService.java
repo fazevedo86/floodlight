@@ -31,9 +31,9 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 
 	private static final Long MAX_FAILED_HELLO = 3L;
 	
-	public final String NodeId;
-	public final Integer helloInterval;
-	public final ClusterCommunicator clusterComm;
+	protected final String NodeId;
+	protected final Integer helloInterval;
+	protected final ClusterCommunicator clusterComm;
 	
 	protected ConcurrentMap<InetAddress,ClusterNode> nodes;
 	protected volatile Long latestHello;
@@ -110,6 +110,20 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	@Override
 	public String getNodeId(){
 		return this.NodeId;
+	}
+	
+	@Override
+	public ClusterNode getClusterNode(InetAddress ip){
+		return this.nodes.get(ip);
+	}
+	
+	@Override
+	public ClusterNode getClusterNode(String NodeID){
+		for(ClusterNode node : this.nodes.values())
+			if(node.getNodeID().equals(NodeID))
+				return node;
+		
+		return null;
 	}
 	
 	/*** Node Management ***/

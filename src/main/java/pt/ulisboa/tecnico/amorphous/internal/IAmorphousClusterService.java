@@ -26,6 +26,10 @@ public interface IAmorphousClusterService {
 	
 	public String getNodeId();
 	
+	public ClusterNode getClusterNode(InetAddress ip);
+	
+	public ClusterNode getClusterNode(String NodeID);
+	
 	
 	/*** Node Management ***/
 	
