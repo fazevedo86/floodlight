@@ -130,7 +130,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 		
 		// Create a new amorphous cluster class
 		try {
-			this.amorphcluster = new ClusterService(this.sessionId, this.config.get("group"), Integer.valueOf(this.config.get("port")));
+			this.amorphcluster = new ClusterService(this.sessionId, this.config.get("group"), Integer.valueOf(this.config.get("port")), Integer.valueOf(this.config.get("helloInterval")));
 		} catch (NumberFormatException | UnknownHostException | InstantiationException e) {
 			Amorphous.logger.error(e.getClass().getName() + ": " + e.getMessage());
 			throw new FloodlightModuleException(e.getClass().getName() + ": " + e.getMessage());

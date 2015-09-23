@@ -25,13 +25,18 @@ import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.LeaveCluster;
 import pt.ulisboa.tecnico.amorphous.internal.state.GlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.SyncReq;
 
-public class ClusterService implements IAmorphousClusterService {
+public class ClusterService extends Thread implements IAmorphousClusterService {
 	protected static final Logger logger = LoggerFactory.getLogger(ClusterService.class);
 	private static volatile ClusterService instance = null;
 
+	private static final Long MAX_FAILED_HELLO = 3L;
+	
 	public final String NodeId;
+	public final Integer helloInterval;
 	public final ClusterCommunicator clusterComm;
+	
 	protected ConcurrentMap<InetAddress,ClusterNode> nodes;
+	protected Long latestHello;
 	
 	public static IAmorphousClusterService getInstance(){
 		return ClusterService.instance;
@@ -41,7 +46,7 @@ public class ClusterService implements IAmorphousClusterService {
 		throw new InstantiationException("An error occurred while creating an instance of " + ClusterService.class.toString() + ": Please use a constructor with an apropriate amount of arguments.");
 	}
 	
-	public ClusterService(String NodeId, String mcastGroupIP, int Port) throws UnknownHostException, InstantiationException {
+	public ClusterService(String NodeId, String mcastGroupIP, Integer Port, Integer HelloInterval) throws UnknownHostException, InstantiationException {
 		synchronized(ClusterService.class){
 			if(ClusterService.instance == null){
 				ClusterService.instance = this;
@@ -54,6 +59,7 @@ public class ClusterService implements IAmorphousClusterService {
 		this.nodes = new ConcurrentHashMap<InetAddress,ClusterNode>();
 				
 		this.NodeId = NodeId;
+		this.helloInterval = HelloInterval;
 	}
 
 	//------------------------------------------------------------------------
@@ -67,9 +73,10 @@ public class ClusterService implements IAmorphousClusterService {
 		if(!this.isClusterServiceRunning()){
 			this.clusterComm.initCommunications();
 			try {
-				this.clusterComm.sendMessage(new JoinCluster(this.NodeId, true));
+				this.sendHello();
+				this.start();
 			} catch (InvalidAmorphClusterMessageException e) {
-				ClusterService.logger.error(e.getMessage());
+				ClusterService.logger.error(e.getClass().getSimpleName() + " occured while sending initial Hello: " + e.getMessage());
 				this.clusterComm.stopCommunications();
 				return false;
 			}
@@ -148,6 +155,9 @@ public class ClusterService implements IAmorphousClusterService {
 				this.printClusterStatus();
 				
 				return true;
+			} else {
+				// Update node's last seen timestamp
+				existingNode.refresh();
 			}
 		} else {
 			this.nodes.put(node.getNodeIP(), node);
@@ -210,4 +220,32 @@ public class ClusterService implements IAmorphousClusterService {
 		this.removeClusterNode(new ClusterNode(origin, message.getOriginatingNodeId()));
 	}
 	
+	private void sendHello() throws InvalidAmorphClusterMessageException{
+		this.clusterComm.sendMessage(new JoinCluster(this.NodeId, true));
+		this.latestHello = System.currentTimeMillis();
+	}
+	
+	@Override
+	public void run(){
+		Long currTime = System.currentTimeMillis();
+		if( (this.latestHello - currTime) >= this.helloInterval ){
+			try {
+				this.sendHello();
+			} catch (InvalidAmorphClusterMessageException e) {
+				ClusterService.logger.error(e.getClass().getSimpleName() + " occured while sending periodic Hello: " + e.getMessage());
+			}
+			for(ClusterNode node : this.nodes.values()){
+				if( node.getNodeAge() >= (this.helloInterval * ClusterService.MAX_FAILED_HELLO) ){
+					this.removeClusterNode(node);
+				}
+			}
+		}
+		
+		// Sleep it out
+		try {
+			sleep(this.helloInterval);
+		} catch (InterruptedException e) {
+			ClusterService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+		}
+	}
 }

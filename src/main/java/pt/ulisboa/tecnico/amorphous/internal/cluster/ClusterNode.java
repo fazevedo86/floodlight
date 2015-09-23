@@ -16,10 +16,12 @@ public class ClusterNode {
 	
 	private final InetAddress ip;
 	private final String nodeId;
+	private volatile Long lastSeen;
 	
 	public ClusterNode(InetAddress IPAddress, String nodeId) {
 		this.ip = IPAddress;
 		this.nodeId = nodeId;
+		this.refresh();
 	}
 	
 	public InetAddress getNodeIP(){
@@ -28,6 +30,22 @@ public class ClusterNode {
 	
 	public String getNodeID(){
 		return this.nodeId;
+	}
+	
+	/**
+	 * Returns the age in milliseconds since the node was last refreshed
+	 * @return
+	 */
+	public Long getNodeAge(){
+		Long age = Long.valueOf(System.currentTimeMillis()) - this.lastSeen;
+		return age;
+	}
+	
+	/**
+	 * Updates the last seen timestamp to the current time
+	 */
+	public void refresh(){
+		this.lastSeen = Long.valueOf(System.currentTimeMillis());
 	}
 
 	@Override

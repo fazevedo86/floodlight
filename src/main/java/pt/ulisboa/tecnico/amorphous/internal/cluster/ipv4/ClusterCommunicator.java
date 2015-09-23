@@ -185,7 +185,7 @@ public class ClusterCommunicator extends Thread {
 				try {
 					sleep(500);
 				} catch (InterruptedException e) {
-					ClusterCommunicator.logger.error(e.getMessage());
+					ClusterCommunicator.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
 				}
 			}
 			// Process all queued inbound messages

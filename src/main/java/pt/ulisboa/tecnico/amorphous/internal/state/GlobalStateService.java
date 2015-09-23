@@ -397,7 +397,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 			try {
 				sleep(500);
 			} catch (InterruptedException e) {
-				GlobalStateService.logger.error(e.getMessage());
+				GlobalStateService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
 			}
 		}
 	}
