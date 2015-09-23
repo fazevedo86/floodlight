@@ -174,7 +174,13 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	
 	@Override
 	public void setClusterNodeDown(String nodeId){
-		// TODO implement it
+		// Obtain graph snapshot
+		FullSync msg = LocalStateService.getInstance().getFullClusterState();
+		
+		// Network graph cleanup
+		for(NetworkNode node : msg.getSwitchAffinityMap().keySet())
+			if(msg.getSwitchAffinityMap().get(node).equals(nodeId))
+				this.amorphTopologyManager.removeRemoteSwitch(node, nodeId);
 	}
 	
 	@Override
