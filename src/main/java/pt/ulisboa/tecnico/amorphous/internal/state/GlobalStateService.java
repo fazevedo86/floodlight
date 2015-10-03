@@ -310,8 +310,9 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		GlobalStateService.logger.info("Received a new SyncReq message from node " + message.getOriginatingNodeId());
 		
 		FullSync replyMsg = LocalStateService.getInstance().getFullClusterState();
+		MessageContainer envelope = new MessageContainer(this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, replyMsg, SyncType.GUARANTEED, null);
 		try {
-			this.amorphClusterService.getClusterComm().sendMessage(origin, replyMsg);
+			this.amorphClusterService.getClusterComm().sendMessage(origin, envelope);
 		} catch (InvalidAmorphClusterMessageException e) {
 			GlobalStateService.logger.error("Failed to send FullSync message: " + e.getMessage());
 		}
