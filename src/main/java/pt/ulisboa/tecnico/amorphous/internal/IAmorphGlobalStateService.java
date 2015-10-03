@@ -10,7 +10,8 @@ import java.net.InetAddress;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
-import pt.ulisboa.tecnico.amorphous.internal.state.IMessageStateListner;
+import pt.ulisboa.tecnico.amorphous.internal.state.IMessageStateListener;
+import pt.ulisboa.tecnico.amorphous.internal.state.ISyncQueueListener;
 import pt.ulisboa.tecnico.amorphous.internal.state.InvalidAmorphSyncQueueException;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.IAmorphStateMessage;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -49,9 +50,24 @@ public interface IAmorphGlobalStateService extends IFloodlightService {
 	 * the message will be propagated throughout the cluster.
 	 * @param queueName The queue name
 	 * @param syncType The default sync type to be used for messages in this queue
+	 * @param callback A callback to be executed upon changes to the queue
 	 */
-	public void registerSyncQueue(String queueName, SyncType queueDefaultSyncType) throws InvalidAmorphSyncQueueException;
+	public void registerSyncQueue(String queueName, SyncType queueDefaultSyncType, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException;
 	
+	/**
+	 * Register a new event listener for a given queue
+	 * @param queueName The queue name
+	 * @param callback A callback to be executed upon changes to the queue
+	 */
+	public void registerSyncQueueListener(String queueName, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException;
+
+	/**
+	 * Unregister an event listener for a given queue
+	 * @param queueName The queue name
+	 * @param callback A callback to be executed upon changes to the queue
+	 */
+	public void unregisterSyncQueueListener(String queueName, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException;
+
 	/**
 	 * Register a new sync message in a given queue.
 	 * Each message is given a unique Id, which can later be used to check on the message.
@@ -62,7 +78,7 @@ public interface IAmorphGlobalStateService extends IFloodlightService {
 	 * @return The unique Id assign to the message
 	 */
 	@SuppressWarnings("rawtypes")
-	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListner callback) throws InvalidAmorphSyncQueueException;
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener callback) throws InvalidAmorphSyncQueueException;
 	
 	/**
 	 * Register a new sync message in a given queue.
@@ -74,7 +90,7 @@ public interface IAmorphGlobalStateService extends IFloodlightService {
 	 * @return The unique Id assign to the message
 	 */
 	@SuppressWarnings("rawtypes")
-	public int queueSyncMessage(String queueName, IAmorphStateMessage message, IMessageStateListner callback) throws InvalidAmorphSyncQueueException;
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, IMessageStateListener callback) throws InvalidAmorphSyncQueueException;
 	
 	/**
 	 * Request for a full database sync from another node in the cluster

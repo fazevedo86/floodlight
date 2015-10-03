@@ -25,8 +25,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.IEntityClass;
-import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -39,7 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService.EventSource;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
-import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService.UpdateSource;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.state.GlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.state.LocalStateService;

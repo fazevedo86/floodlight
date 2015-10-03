@@ -10,7 +10,7 @@ import java.util.EventListener;
 import net.floodlightcontroller.core.IListener;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService.SyncMessageState;
 
-public interface IMessageStateListner extends IListener<String>, EventListener {
+public interface IMessageStateListener extends IListener<String>, EventListener {
 
 	public void onStateUpdate(SyncMessageState status);
 

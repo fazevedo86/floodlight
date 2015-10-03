@@ -7,15 +7,17 @@ package pt.ulisboa.tecnico.amorphous.internal.state;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.floodlightcontroller.routing.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
@@ -26,8 +28,6 @@ import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphousClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
-import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
-import pt.ulisboa.tecnico.amorphous.internal.cluster.ipv4.ClusterCommunicator;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddHost;
@@ -35,6 +35,7 @@ import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddLink;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddOFSwitch;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.FullSync;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.IAmorphStateMessage;
+import pt.ulisboa.tecnico.amorphous.internal.state.messages.MessageContainer;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemHost;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemLink;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.RemOFSwitch;
@@ -42,7 +43,6 @@ import pt.ulisboa.tecnico.amorphous.internal.state.messages.SyncReq;
 import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
-import pt.ulisboa.tecnico.amorphous.types.NetworkNode.NetworkNodeType;
 
 public class GlobalStateService extends Thread implements IAmorphGlobalStateService, IAmorphTopologyListner, Comparable<IAmorphTopologyListner> {
 
@@ -53,10 +53,10 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		public final IAmorphStateMessage message;
 		public final SyncType syncType;
 		public SyncMessageState syncState;
-		public final IMessageStateListner messageStateListner;
+		public final IMessageStateListener messageStateListner;
 		
 		@SuppressWarnings("rawtypes")
-		public StateSyncMessage(Integer messageId, String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListner messageStateListner){
+		public StateSyncMessage(Integer messageId, String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener messageStateListner){
 			this.messageId = messageId;
 			this.queueName = queueName;
 			this.message = message;
@@ -78,11 +78,15 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	// Cluster service
 	private IAmorphousClusterService amorphClusterService = null;
 	// Message queues
-	private Map<String,Queue<StateSyncMessage>> messageQueues;
+	private Map<String,Queue<MessageContainer>> outboundMessageQueues;
+	// Message queues
+	private Map<String,Queue<MessageContainer>> inboundMessageQueues;
+	// Message queue listeners
+	private Map<String,List<ISyncQueueListener>> queueListeners;
 	// Default sync types for the message queues
 	private Map<String,SyncType> messageQueueTypes;
 	// Message history buffer
-	private Map<Integer,StateSyncMessage> messageHistory;
+	private Map<Integer,MessageContainer> messageHistory;
 	// Oldest message stored in message history buffer
 	private Integer oldestMessage;
 	// Global message counter
@@ -100,14 +104,16 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 	
 	private GlobalStateService() {
-		this.messageQueues = new ConcurrentHashMap<String, Queue<StateSyncMessage>>();
+		this.outboundMessageQueues = new ConcurrentHashMap<String, Queue<MessageContainer>>();
+		this.inboundMessageQueues = new ConcurrentHashMap<String, Queue<MessageContainer>>();
+		this.queueListeners = new ConcurrentHashMap<String, List<ISyncQueueListener>>();
 		this.messageQueueTypes = new ConcurrentHashMap<String, SyncType>();
 		this.msgCounter = new AtomicInteger(1);
-		this.messageHistory = new HashMap<Integer, StateSyncMessage>(GlobalStateService.MSG_HISTORY_SIZE);
+		this.messageHistory = new HashMap<Integer, MessageContainer>(GlobalStateService.MSG_HISTORY_SIZE);
 		this.oldestMessage = 0;
 		
 		try{
-			this.registerSyncQueue(GlobalStateService.STATE_SYNC_QUEUE, SyncType.BEST_EFFORT);
+			this.registerSyncQueue(GlobalStateService.STATE_SYNC_QUEUE, SyncType.BEST_EFFORT, null);
 		} catch(InvalidAmorphSyncQueueException e) {
 			GlobalStateService.logger.error("Failed to create state sync queue: " + e.getMessage());
 			throw new IllegalArgumentException(e.getMessage());
@@ -125,28 +131,50 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 	
 	@Override
-	public void registerSyncQueue(String queueName, SyncType queueDefaultSyncType) throws InvalidAmorphSyncQueueException {
-		if(!this.messageQueues.containsKey(queueName)) {
-			this.messageQueues.put(queueName, new ConcurrentLinkedQueue<StateSyncMessage>());
+	public void registerSyncQueue(String queueName, SyncType queueDefaultSyncType, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException {
+		if(!this.outboundMessageQueues.containsKey(queueName)) {
+			
+			this.outboundMessageQueues.put(queueName, new ConcurrentLinkedQueue<MessageContainer>());
+			this.inboundMessageQueues.put(queueName, new ConcurrentLinkedQueue<MessageContainer>());
+			
 			this.messageQueueTypes.put(queueName, queueDefaultSyncType);
+			
+			this.queueListeners.put(queueName, Collections.synchronizedList(new ArrayList<ISyncQueueListener>()));
+			if(callback != null)
+				this.queueListeners.get(queueName).add(callback);
+			
 		} else {
 			throw new InvalidAmorphSyncQueueException("Queue " + queueName + " already exists!");
 		}
 	}
+	
+	public void registerSyncQueueListener(String queueName, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException{
+		if(!this.queueListeners.containsKey(queueName))
+			throw new InvalidAmorphSyncQueueException(queueName);
+		
+		this.queueListeners.get(queueName).add(callback);
+	}
+	
+	public void unregisterSyncQueueListener(String queueName, ISyncQueueListener callback) throws InvalidAmorphSyncQueueException{
+		if(!this.queueListeners.containsKey(queueName))
+			throw new InvalidAmorphSyncQueueException(queueName);
+		
+		this.queueListeners.get(queueName).remove(callback);
+	}
 
 	@SuppressWarnings("rawtypes")
 	@Override
-	public int queueSyncMessage(String queueName, IAmorphStateMessage message, IMessageStateListner callback) throws InvalidAmorphSyncQueueException {
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, IMessageStateListener callback) throws InvalidAmorphSyncQueueException {
 		return this.queueSyncMessage(queueName, message, this.messageQueueTypes.get(queueName), callback);
 	}
 	
 	@SuppressWarnings("rawtypes")
 	@Override
-	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListner callback) throws InvalidAmorphSyncQueueException {
-		if(this.messageQueues.containsKey(queueName)){
-			StateSyncMessage syncMessage = new StateSyncMessage(this.msgCounter.getAndIncrement(), queueName, message, this.messageQueueTypes.get(queueName), callback);
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener callback) throws InvalidAmorphSyncQueueException {
+		if(this.outboundMessageQueues.containsKey(queueName)){
+			MessageContainer syncMessage = new MessageContainer(this.msgCounter.getAndIncrement(), queueName, message, this.messageQueueTypes.get(queueName), callback);
 			this.addToMessageHistory(syncMessage);
-			this.messageQueues.get(queueName).add(syncMessage);
+			this.outboundMessageQueues.get(queueName).add(syncMessage);
 			
 			return syncMessage.messageId;
 		} else {
@@ -185,21 +213,34 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	
 	@Override
 	public void processStateMessage(InetAddress NodeAddress, IAmorphClusterMessage msg) throws InvalidAmorphClusterMessageException {
-	
 		if(msg instanceof IAmorphStateMessage){
 			GlobalStateService.logger.debug("Processing message from node " + msg.getOriginatingNodeId() + " (" + NodeAddress.getHostName() + ")");
 			
 			// Validate Node
 			ClusterNode originatingNode = new ClusterNode(NodeAddress, msg.getOriginatingNodeId());
 			if(this.amorphClusterService.isClusterNode(originatingNode)){
-				// Dispatch message handling to accordingly method
-				try {
-					GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
-				} catch(InvocationTargetException ite){
-					GlobalStateService.logger.error(ite.getClass().getSimpleName() + ": " + ite.getCause().getClass().getSimpleName() + "");
-					ite.getCause().printStackTrace();
-				} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | SecurityException e){
-					GlobalStateService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+				if(msg instanceof MessageContainer){
+					MessageContainer envelope = (MessageContainer)msg;
+					
+					// Dispatch internal messages right away
+					if(envelope.queueName.equals(GlobalStateService.STATE_SYNC_QUEUE)){
+						// Dispatch message handling to accordingly method
+						try {
+							GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
+						} catch(InvocationTargetException ite){
+							GlobalStateService.logger.error(ite.getClass().getSimpleName() + ": " + ite.getCause().getClass().getSimpleName() + "");
+							ite.getCause().printStackTrace();
+						} catch(NoSuchMethodException | IllegalAccessException | IllegalArgumentException | SecurityException e){
+							GlobalStateService.logger.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+						}
+					}else{
+						// Queue it
+						envelope.syncState = SyncMessageState.QUEUED;
+						this.inboundMessageQueues.get(envelope.queueName).add(envelope);
+					}
+				} else {
+					GlobalStateService.logger.error("Received a state sync message (" + msg.getMessageType() + ") that was not wrapped in a " + MessageContainer.class.getSimpleName() + " object!");
+					throw new InvalidAmorphClusterMessageException();
 				}
 			} else {
 				GlobalStateService.logger.warn("Received a state sync message (" + msg.getMessageType() + ") from a node that does not belong to the cluster (" + NodeAddress.getHostAddress() + ")");
@@ -210,7 +251,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 	//------------------------------------------------------------------------
 	
-	private void addToMessageHistory(StateSyncMessage msg){
+	private void addToMessageHistory(MessageContainer msg){
 		synchronized (this.messageHistory) {
 			if(this.messageHistory.size() >= GlobalStateService.MSG_HISTORY_SIZE){
 				this.messageHistory.remove(this.oldestMessage);
@@ -365,15 +406,16 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void run() {
 		while(this.amorphClusterService.isClusterServiceRunning()){
-			for(Queue<StateSyncMessage> q : this.messageQueues.values()){
-				Iterator<StateSyncMessage> iterator = q.iterator();
+			// Send messages out
+			for(Queue<MessageContainer> q : this.outboundMessageQueues.values()){
+				Iterator<MessageContainer> iterator = q.iterator();
 				while(iterator.hasNext()){
-					StateSyncMessage msg = iterator.next();
+					MessageContainer msg = iterator.next();
 					if(msg.syncState.equals(SyncMessageState.QUEUED)){
 						switch(msg.syncType){
 							case BEST_EFFORT:
 								try {
-									this.amorphClusterService.getClusterComm().sendMessage(msg.message);
+									this.amorphClusterService.getClusterComm().sendMessage(msg);
 								} catch (InvalidAmorphClusterMessageException e) {
 									GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
 								}
@@ -385,7 +427,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 							case GUARANTEED:
 								for(ClusterNode node : this.amorphClusterService.getClusterNodes()){
 									try {
-										this.amorphClusterService.getClusterComm().sendMessage(node, msg.message);
+										this.amorphClusterService.getClusterComm().sendMessage(node, msg);
 									} catch (InvalidAmorphClusterMessageException e) {
 										GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
 									}
@@ -399,6 +441,16 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 				}
 			}
 			
+			// Process inbound messages
+			for(String queue : this.inboundMessageQueues.keySet()){
+				Queue<MessageContainer> q = this.inboundMessageQueues.get(queue);
+				while(!q.isEmpty()){
+					MessageContainer envelope = q.poll();
+					for(ISyncQueueListener listener : this.queueListeners.get(queue)){
+						listener.onMessageReceived(envelope.message);
+					}
+				}
+			}
 			// Sleep it out
 			try {
 				sleep(500);
