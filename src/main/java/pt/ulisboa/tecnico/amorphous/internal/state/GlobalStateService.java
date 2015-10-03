@@ -227,7 +227,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 					if(envelope.queueName.equals(GlobalStateService.STATE_SYNC_QUEUE)){
 						// Dispatch message handling to accordingly method
 						try {
-							GlobalStateService.class.getDeclaredMethod("handleMessage" + msg.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
+							GlobalStateService.class.getDeclaredMethod("handleMessage" + envelope.message.getMessageType().getSimpleName(), ClusterNode.class, IAmorphClusterMessage.class).invoke(this, originatingNode, msg);
 						} catch(InvocationTargetException ite){
 							GlobalStateService.logger.error(ite.getClass().getSimpleName() + ": " + ite.getCause().getClass().getSimpleName() + "");
 							ite.getCause().printStackTrace();
