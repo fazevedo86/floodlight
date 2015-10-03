@@ -189,7 +189,8 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	public void requestFullSync(ClusterNode sourceNode){
 		try {
 			// Issue sync request
-			this.amorphClusterService.getClusterComm().sendMessage(sourceNode, new SyncReq(this.amorphClusterService.getNodeId()));
+			MessageContainer envelope = new MessageContainer(1, GlobalStateService.STATE_SYNC_QUEUE, new SyncReq(this.amorphClusterService.getNodeId()), SyncType.GUARANTEED, null);
+			this.amorphClusterService.getClusterComm().sendMessage(sourceNode, envelope);
 			GlobalStateService.logger.error("SyncReq sent to node " + sourceNode.getNodeIP().getHostAddress() );
 			
 			// Add a security check to the inbound sync message
