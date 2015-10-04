@@ -131,8 +131,27 @@ public class ClusterCommunicator extends Thread {
 	 * @param msg The message to be sent
 	 * @throws InvalidAmorphClusterMessageException 
 	 */
-	public void sendMessage(IAmorphClusterMessage msg) throws InvalidAmorphClusterMessageException, MessageTooLargeException{
-		this.outMcastSocket.sendMessage(new Packet(this.mcastGroup, MessageCodec.getEncodedMessage(msg)));
+	public void sendMessage(IAmorphClusterMessage msg) throws InvalidAmorphClusterMessageException{
+		try {
+			this.outMcastSocket.sendMessage(new Packet(this.mcastGroup, MessageCodec.getEncodedMessage(msg)));
+		} catch (MessageTooLargeException e) {
+			ClusterCommunicator.logger.error(e.getMessage());
+			this.sendGuaranteedDeliveryMessage(msg);
+		}
+	}
+	
+	public void sendGuaranteedDeliveryMessage(IAmorphClusterMessage message) throws InvalidAmorphClusterMessageException{
+		InvalidAmorphClusterMessageException exception = null;
+		for(ClusterNode node : ClusterService.getInstance().getClusterNodes()){
+			try {
+				this.sendMessage(node, message);
+			} catch (InvalidAmorphClusterMessageException e){
+				ClusterCommunicator.logger.error("Failed to send message: " + e.getMessage() + " to node " + node.getNodeIP().getHostAddress() + " (" + node.getNodeID() + ")");
+				exception = e;
+			}
+		}
+		if(exception != null)
+			throw exception;
 	}
 	
 	/**

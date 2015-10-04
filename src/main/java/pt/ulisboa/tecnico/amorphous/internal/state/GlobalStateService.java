@@ -420,9 +420,6 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 									this.amorphClusterService.getClusterComm().sendMessage(msg);
 								} catch (InvalidAmorphClusterMessageException e) {
 									GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
-								} catch(MessageTooLargeException mtle){
-									GlobalStateService.logger.error(mtle.getMessage());
-									this.sendGuaranteedDeliveryMessage(msg);
 								}
 								if(msg.messageStateListner != null)
 									msg.messageStateListner.onStateUpdate(SyncMessageState.SENT);
@@ -430,7 +427,11 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 								break;
 								
 							case GUARANTEED:
-								this.sendGuaranteedDeliveryMessage(msg);
+								try {
+									this.amorphClusterService.getClusterComm().sendGuaranteedDeliveryMessage(msg);
+								} catch (InvalidAmorphClusterMessageException e) {
+									GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
+								}
 								if(msg.messageStateListner != null)
 									msg.messageStateListner.onStateUpdate(SyncMessageState.SENT);
 								q.remove(msg);
@@ -459,16 +460,6 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		}
 	}
 	//------------------------------------------------------------------------
-	
-	protected void sendGuaranteedDeliveryMessage(IAmorphStateMessage envelope){
-		for(ClusterNode node : this.amorphClusterService.getClusterNodes()){
-			try {
-				this.amorphClusterService.getClusterComm().sendMessage(node, envelope);
-			} catch (InvalidAmorphClusterMessageException e) {
-				GlobalStateService.logger.error("Failed to send message: " + e.getMessage() + " to node " + node.getNodeIP().getHostAddress() + " (" + node.getNodeID() + ")");
-			}
-		}
-	}
 	
 	@Override
 	public int compareTo(IAmorphTopologyListner o){
