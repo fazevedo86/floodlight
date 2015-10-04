@@ -6,36 +6,31 @@ public class NetworkHop implements Serializable, Comparable<NetworkNode> {
 
 	private static final long serialVersionUID = -897369719368788462L;
 
-	public enum StreamDirection{
-		INBOUND,
-		OUTBOUND
-	}
-	
 	private final NetworkNode ofswitch;
-	private final Integer switchPort;
-	private final StreamDirection direction;
+	private final Integer inboundSwitchPort;
+	private final Integer outboundSwitchPort;
 	
-	public NetworkHop(NetworkNode OFSwitch, Integer SwitchPort, StreamDirection Direction) {
+	public NetworkHop(NetworkNode OFSwitch, Integer InboundSwitchPort, Integer OutboundSwitchPort) {
 		this.ofswitch = OFSwitch;
-		this.switchPort = SwitchPort;
-		this.direction = Direction;
+		this.inboundSwitchPort = InboundSwitchPort;
+		this.outboundSwitchPort = OutboundSwitchPort;
 	}
 	
 	public NetworkNode getSwitch(){
 		return this.ofswitch;
 	}
 	
-	public Integer getSwitchPort(){
-		return this.switchPort;
+	public Integer getInboundSwitchPort(){
+		return this.inboundSwitchPort;
 	}
 	
-	public StreamDirection getDirection(){
-		return this.direction;
+	public Integer getOutboundSwitchPort(){
+		return this.outboundSwitchPort;
 	}
 
 	@Override
 	public int hashCode(){
-		return this.ofswitch.hashCode() + this.switchPort.hashCode() + this.direction.hashCode();
+		return this.ofswitch.hashCode() + this.inboundSwitchPort.hashCode() + this.outboundSwitchPort.hashCode();
 	}
 	
 	@Override

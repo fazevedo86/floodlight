@@ -12,7 +12,6 @@ package pt.ulisboa.tecnico.amorphous.internal.state;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,33 +23,23 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.routing.Link;
 
-import org.jgrapht.Graph;
-import org.jgrapht.GraphPath;
 import org.jgrapht.Graphs;
-import org.jgrapht.UndirectedGraph;
 import org.jgrapht.alg.DijkstraShortestPath;
-import org.jgrapht.graph.Multigraph;
-import org.jgrapht.graph.ParanoidGraph;
 import org.jgrapht.graph.WeightedMultigraph;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.python.modules.synchronize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import pt.ulisboa.tecnico.amorphous.Amorphous;
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyListner;
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
-import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService.UpdateSource;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.FullSync;
 import pt.ulisboa.tecnico.amorphous.types.NetworkHop;
-import pt.ulisboa.tecnico.amorphous.types.NetworkHop.StreamDirection;
 import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
@@ -178,29 +167,24 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			List<NetworkHop> path = new ArrayList<NetworkHop>((nodes.size() - 2) * 2);
 			
-			for(int n = 0; n < nodes.size() - 1; n++){
-				NetworkLink link = links.get(n);
-				NetworkNode src = nodes.get(n), dst = nodes.get(n+1);
-				Integer srcPort = -1, dstPort = -1;
+			for(int n = 1; n < nodes.size() - 1; n++){
+				NetworkLink inboundLink = links.get(n-1), outboundLink = links.get(n);
+				NetworkNode ofswitch = nodes.get(n);
+				Integer inPort = -1, outPort = -1;
 				
-				if(link.getNodeA().equals(src.getNodeId())){
-					srcPort = link.getNodeAPortNumber();
-					dstPort = link.getNodeBPortNumber();
-				} else {
-					srcPort = link.getNodeBPortNumber();
-					dstPort = link.getNodeAPortNumber();
-				}
-				NetworkHop hop;
+				// Determine inbound port
+				if(inboundLink.getNodeA().equals(ofswitch.getNodeId()))
+					inPort = inboundLink.getNodeAPortNumber();
+				else
+					inPort = inboundLink.getNodeBPortNumber();
 				
-				if(src.getNodeType().equals(NetworkNodeType.OFSWITCH)){
-					hop = new NetworkHop(src, srcPort, StreamDirection.OUTBOUND); 
-					path.add(hop);
-				}
+				// Determine outbound port
+				if(outboundLink.getNodeA().equals(ofswitch.getNodeId()))
+					outPort = outboundLink.getNodeAPortNumber();
+				else
+					outPort = outboundLink.getNodeBPortNumber();
 				
-				if(dst.getNodeType().equals(NetworkNodeType.OFSWITCH)){
-					hop = new NetworkHop(dst, dstPort, StreamDirection.INBOUND);
-					path.add(hop);
-				}
+				path.add(new NetworkHop(ofswitch, inPort, outPort));
 			}
 			
 			this.printNetworkPath(origin, destination, path);
@@ -480,6 +464,10 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			}
 		}
 		
+		// DEBUG
+		if(this.localHosts.size() > 1)
+			this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], (NetworkHost)this.localHosts.values().toArray()[1]);
+		
 		return success;
 	}
 
@@ -655,8 +643,11 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		StringBuilder output = new StringBuilder("\n\n[AMORPHOUS] Calculated path from h" + origin.getNodeId() + " to h" + destination.getNodeId() + "\n");
 		
-		for(int i = path.size() - 1; i >= 0; i--)
-			output.append(i + ") s" + path.get(i).getSwitch().getNodeId() + "-eth" + path.get(i).getSwitchPort() + " " + path.get(i).getDirection() + "\n");
+		for(int i = path.size() - 1; i >= 0; i--){
+			output.append(i + ") s" + path.get(i).getSwitch().getNodeId() + "\n");
+			output.append("\t INBOUND eth" + path.get(i).getInboundSwitchPort() + "\n");
+			output.append("\t OUTBOUND eth" + path.get(i).getInboundSwitchPort() + "\n");
+		}
 		
 		output.append("\n");
 		
