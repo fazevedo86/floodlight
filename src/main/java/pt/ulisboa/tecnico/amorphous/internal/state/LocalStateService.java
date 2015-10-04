@@ -171,41 +171,44 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 
 	public List<NetworkHop> getNetworkPath(NetworkHost origin, NetworkHost destination){
-		
-		DijkstraShortestPath<NetworkNode, NetworkLink> dijkstra = new DijkstraShortestPath<NetworkNode, NetworkLink>(this.networkGraph, origin, destination);
-		List<NetworkNode> nodes = Graphs.getPathVertexList(dijkstra.getPath());
-		List<NetworkLink> links = dijkstra.getPath().getEdgeList();
-		
-		List<NetworkHop> path = new ArrayList<NetworkHop>((nodes.size() - 2) * 2);
-		
-		for(int n = 0; n < nodes.size() - 1; n++){
-			NetworkLink link = links.get(n);
-			NetworkNode src = nodes.get(n), dst = nodes.get(n+1);
-			Integer srcPort = -1, dstPort = -1;
+		if(this.networkGraph.containsVertex(origin) && this.networkGraph.containsVertex(destination)){
+			DijkstraShortestPath<NetworkNode, NetworkLink> dijkstra = new DijkstraShortestPath<NetworkNode, NetworkLink>(this.networkGraph, origin, destination);
+			List<NetworkNode> nodes = Graphs.getPathVertexList(dijkstra.getPath());
+			List<NetworkLink> links = dijkstra.getPath().getEdgeList();
 			
-			if(link.getNodeA().equals(src.getNodeId())){
-				srcPort = link.getNodeAPortNumber();
-				dstPort = link.getNodeBPortNumber();
-			} else {
-				srcPort = link.getNodeBPortNumber();
-				dstPort = link.getNodeAPortNumber();
-			}
-			NetworkHop hop;
+			List<NetworkHop> path = new ArrayList<NetworkHop>((nodes.size() - 2) * 2);
 			
-			if(src.getNodeType().equals(NetworkNodeType.OFSWITCH)){
-				hop = new NetworkHop(src, srcPort, StreamDirection.OUTBOUND); 
-				path.add(hop);
+			for(int n = 0; n < nodes.size() - 1; n++){
+				NetworkLink link = links.get(n);
+				NetworkNode src = nodes.get(n), dst = nodes.get(n+1);
+				Integer srcPort = -1, dstPort = -1;
+				
+				if(link.getNodeA().equals(src.getNodeId())){
+					srcPort = link.getNodeAPortNumber();
+					dstPort = link.getNodeBPortNumber();
+				} else {
+					srcPort = link.getNodeBPortNumber();
+					dstPort = link.getNodeAPortNumber();
+				}
+				NetworkHop hop;
+				
+				if(src.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+					hop = new NetworkHop(src, srcPort, StreamDirection.OUTBOUND); 
+					path.add(hop);
+				}
+				
+				if(dst.getNodeType().equals(NetworkNodeType.OFSWITCH)){
+					hop = new NetworkHop(dst, dstPort, StreamDirection.INBOUND);
+					path.add(hop);
+				}
 			}
 			
-			if(dst.getNodeType().equals(NetworkNodeType.OFSWITCH)){
-				hop = new NetworkHop(dst, dstPort, StreamDirection.INBOUND);
-				path.add(hop);
-			}
+			this.printNetworkPath(origin, destination, path);
+	
+			return path;
+		} else {
+			return new ArrayList<NetworkHop>(0);
 		}
-		
-		this.printNetworkPath(origin, destination, path);
-
-		return path;
 	}
 	
 	//------------------------------------------------------------------------
@@ -477,9 +480,6 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			}
 		}
 		
-		if(this.localHosts.size() > 1)
-			this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], (NetworkHost)this.localHosts.values().toArray()[1]);
-		
 		return success;
 	}
 
@@ -603,7 +603,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			NetworkGraph.setEdgeWeight(link, this.networkGraph.getEdgeWeight(link));
 		}
 
-		return new FullSync(ClusterService.getInstance().getNodeId(), switchAffinity, NetworkGraph);		
+		return new FullSync(switchAffinity, NetworkGraph);		
 	}
 	
 	public synchronized void setFullClusterState(FullSync fullSync){

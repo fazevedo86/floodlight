@@ -12,17 +12,15 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 public class AddOFSwitch implements IAmorphStateMessage<NetworkNode> {
 
 	private static final long serialVersionUID = -7124212847523105697L;
-	private final String nodeId;
 	protected final NetworkNode ofswitch;
 	
-	public AddOFSwitch(String NodeId, NetworkNode OFSwitch) {
-		this.nodeId = NodeId;
+	public AddOFSwitch(NetworkNode OFSwitch) {
 		this.ofswitch = OFSwitch;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override

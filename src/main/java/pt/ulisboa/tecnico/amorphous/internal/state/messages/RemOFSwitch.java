@@ -12,17 +12,15 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkNode;
 public class RemOFSwitch implements IAmorphStateMessage<NetworkNode> {
 
 	private static final long serialVersionUID = 595055927605119847L;
-	private final String nodeId;
 	protected final NetworkNode ofswitch;
 	
-	public RemOFSwitch(String NodeId, NetworkNode OFSwitch) {
-		this.nodeId = NodeId;
+	public RemOFSwitch(NetworkNode OFSwitch) {
 		this.ofswitch = OFSwitch;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override

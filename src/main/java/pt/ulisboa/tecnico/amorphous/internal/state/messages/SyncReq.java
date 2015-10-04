@@ -14,15 +14,13 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 public class SyncReq implements IAmorphStateMessage {
 
 	private static final long serialVersionUID = 2677440106876323463L;
-	private final String nodeId;
 	
-	public SyncReq(String NodeId) {
-		this.nodeId = NodeId;
+	public SyncReq() {
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override

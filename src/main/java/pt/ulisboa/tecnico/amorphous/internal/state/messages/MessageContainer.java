@@ -16,12 +16,14 @@ public class MessageContainer implements IAmorphStateMessage<IAmorphStateMessage
 	public transient SyncMessageState syncState;
 	public final transient IMessageStateListener messageStateListner;
 	public transient InetAddress originatingNodeAddress;
+	public final transient SyncType syncType;
 
+	private final String nodeId;
 	public final String queueName;
 	public final IAmorphStateMessage message;
-	public final SyncType syncType;
 	
-	public MessageContainer(Integer messageId, String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener messageStateListner){
+	public MessageContainer(String NodeId, Integer messageId, String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener messageStateListner){
+		this.nodeId = NodeId;
 		this.messageId = messageId;
 		this.queueName = queueName;
 		this.message = message;
@@ -32,7 +34,7 @@ public class MessageContainer implements IAmorphStateMessage<IAmorphStateMessage
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.message.getOriginatingNodeId();
+		return this.nodeId;
 	}
 
 	@Override

@@ -11,17 +11,15 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 public class AddLink implements IAmorphStateMessage<NetworkLink> {
 
 	private static final long serialVersionUID = -5373576974416736754L;
-	private final String nodeId;
 	protected final NetworkLink networkLink;
 	
-	public AddLink(String NodeId, NetworkLink NetLink) {
-		this.nodeId = NodeId;
+	public AddLink(NetworkLink NetLink) {
 		this.networkLink = NetLink;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override

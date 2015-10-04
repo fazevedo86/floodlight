@@ -12,17 +12,15 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkHost;
 public class RemHost implements IAmorphStateMessage<NetworkHost> {
 
 	private static final long serialVersionUID = 2983083639936201427L;
-	private final String nodeId;
 	protected final NetworkHost host;
 	
-	public RemHost(String NodeId, NetworkHost Host) {
-		this.nodeId = NodeId;
+	public RemHost(NetworkHost Host) {
 		this.host = Host;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override

@@ -21,22 +21,20 @@ public class FullSync implements IAmorphStateMessage {
 
 	private static final long serialVersionUID = -7930919599325908263L;
 	
-	private final String NodeId;
 	private final Map<NetworkNode, String> switchAffinity;
 	protected final WeightedMultigraph<NetworkNode, NetworkLink> networkGraph;
 //	protected final Map<Class<? extends IFloodlightModule>, Serializable> networkPolicies;
 	
 //	private final Map<String, Integer> vectorClock;
 	
-	public FullSync(String NodeId, Map<NetworkNode, String> SwitchAffinity, WeightedMultigraph<NetworkNode, NetworkLink> NetworkGraph) {
-		this.NodeId = NodeId;
+	public FullSync(Map<NetworkNode, String> SwitchAffinity, WeightedMultigraph<NetworkNode, NetworkLink> NetworkGraph) {
 		this.switchAffinity = SwitchAffinity;
 		this.networkGraph = NetworkGraph;		
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.NodeId;
+		return null;
 	}
 
 	@Override

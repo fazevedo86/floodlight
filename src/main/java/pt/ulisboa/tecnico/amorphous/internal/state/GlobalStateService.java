@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +27,7 @@ import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphousClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterNode;
+import pt.ulisboa.tecnico.amorphous.internal.cluster.ipv4.MessageTooLargeException;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.IAmorphClusterMessage;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.messages.InvalidAmorphClusterMessageException;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.AddHost;
@@ -172,7 +172,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener callback) throws InvalidAmorphSyncQueueException {
 		if(this.outboundMessageQueues.containsKey(queueName)){
-			MessageContainer syncMessage = new MessageContainer(this.msgCounter.getAndIncrement(), queueName, message, this.messageQueueTypes.get(queueName), callback);
+			MessageContainer syncMessage = new MessageContainer(this.amorphClusterService.getNodeId(), this.msgCounter.getAndIncrement(), queueName, message, this.messageQueueTypes.get(queueName), callback);
 			this.addToMessageHistory(syncMessage);
 			this.outboundMessageQueues.get(queueName).add(syncMessage);
 			
@@ -189,7 +189,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	public void requestFullSync(ClusterNode sourceNode){
 		try {
 			// Issue sync request
-			MessageContainer envelope = new MessageContainer(1, GlobalStateService.STATE_SYNC_QUEUE, new SyncReq(this.amorphClusterService.getNodeId()), SyncType.GUARANTEED, null);
+			MessageContainer envelope = new MessageContainer(this.amorphClusterService.getNodeId(), this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, new SyncReq(), SyncType.GUARANTEED, null);
 			this.amorphClusterService.getClusterComm().sendMessage(sourceNode, envelope);
 			GlobalStateService.logger.error("SyncReq sent to node " + sourceNode.getNodeIP().getHostAddress() );
 			
@@ -310,7 +310,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		GlobalStateService.logger.info("Received a new SyncReq message from node " + message.getOriginatingNodeId());
 		
 		FullSync replyMsg = LocalStateService.getInstance().getFullClusterState();
-		MessageContainer envelope = new MessageContainer(this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, replyMsg, SyncType.GUARANTEED, null);
+		MessageContainer envelope = new MessageContainer(this.amorphClusterService.getNodeId(), this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, replyMsg, SyncType.GUARANTEED, null);
 		try {
 			this.amorphClusterService.getClusterComm().sendMessage(origin, envelope);
 		} catch (InvalidAmorphClusterMessageException e) {
@@ -337,7 +337,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void switchAdded(NetworkNode ofswitch) {
 		GlobalStateService.logger.info("Queueing a new AddOFSwitch message to the cluster (ofswitch=" + DatapathId.of(ofswitch.getNodeId()) + ")");
-		AddOFSwitch msg = new AddOFSwitch(this.amorphClusterService.getNodeId(), ofswitch);
+		AddOFSwitch msg = new AddOFSwitch(ofswitch);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -348,7 +348,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void switchRemoved(NetworkNode ofswitch) {
 		GlobalStateService.logger.info("Queueing a new RemOFSwitch message to the cluster (ofswitch=" + DatapathId.of(ofswitch.getNodeId()) + ")");
-		RemOFSwitch msg = new RemOFSwitch(this.amorphClusterService.getNodeId(), ofswitch);
+		RemOFSwitch msg = new RemOFSwitch(ofswitch);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -359,7 +359,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void linkAdded(NetworkLink link) {
 		GlobalStateService.logger.info("Queueing a new AddLink message to the cluster (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ")");
-		AddLink msg = new AddLink(this.amorphClusterService.getNodeId(), link);
+		AddLink msg = new AddLink(link);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -370,7 +370,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void linkRemoved(NetworkLink link) {
 		GlobalStateService.logger.info("Queueing a new RemLink message to the cluster (s" + link.getNodeA() + "-eth" + link.getNodeAPortNumber() + ":s" + link.getNodeB() + "-eth" + link.getNodeBPortNumber() + ")");
-		RemLink msg = new RemLink(this.amorphClusterService.getNodeId(), link);
+		RemLink msg = new RemLink(link);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -381,7 +381,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void hostAdded(NetworkHost host, NetworkLink attachmentPoint) {
 		GlobalStateService.logger.info("Queueing a new AddHost message to the cluster (s" + attachmentPoint.getNodeA() + "-eth" + attachmentPoint.getNodeAPortNumber() + ":h" + attachmentPoint.getNodeB() + "-eth" + attachmentPoint.getNodeBPortNumber() + ")");
-		AddHost msg = new AddHost(this.amorphClusterService.getNodeId(), host, attachmentPoint);
+		AddHost msg = new AddHost(host, attachmentPoint);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -392,7 +392,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	@Override
 	public void hostRemoved(NetworkHost host) {
 		GlobalStateService.logger.info("Queueing a new RemHost message to the cluster (h=" + host.getNodeId() + ")");
-		RemHost msg = new RemHost(this.amorphClusterService.getNodeId(), host);
+		RemHost msg = new RemHost(host);
 		try {
 			this.queueSyncMessage(GlobalStateService.STATE_SYNC_QUEUE, msg, null);
 		} catch (InvalidAmorphSyncQueueException e) {
@@ -420,6 +420,9 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 									this.amorphClusterService.getClusterComm().sendMessage(msg);
 								} catch (InvalidAmorphClusterMessageException e) {
 									GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
+								} catch(MessageTooLargeException mtle){
+									GlobalStateService.logger.error(mtle.getMessage());
+									this.sendGuaranteedDeliveryMessage(msg);
 								}
 								if(msg.messageStateListner != null)
 									msg.messageStateListner.onStateUpdate(SyncMessageState.SENT);
@@ -427,13 +430,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 								break;
 								
 							case GUARANTEED:
-								for(ClusterNode node : this.amorphClusterService.getClusterNodes()){
-									try {
-										this.amorphClusterService.getClusterComm().sendMessage(node, msg);
-									} catch (InvalidAmorphClusterMessageException e) {
-										GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
-									}
-								}
+								this.sendGuaranteedDeliveryMessage(msg);
 								if(msg.messageStateListner != null)
 									msg.messageStateListner.onStateUpdate(SyncMessageState.SENT);
 								q.remove(msg);
@@ -462,6 +459,16 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		}
 	}
 	//------------------------------------------------------------------------
+	
+	protected void sendGuaranteedDeliveryMessage(IAmorphStateMessage envelope){
+		for(ClusterNode node : this.amorphClusterService.getClusterNodes()){
+			try {
+				this.amorphClusterService.getClusterComm().sendMessage(node, envelope);
+			} catch (InvalidAmorphClusterMessageException e) {
+				GlobalStateService.logger.error("Failed to send message: " + e.getMessage() + " to node " + node.getNodeIP().getHostAddress() + " (" + node.getNodeID() + ")");
+			}
+		}
+	}
 	
 	@Override
 	public int compareTo(IAmorphTopologyListner o){

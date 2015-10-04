@@ -13,19 +13,17 @@ import pt.ulisboa.tecnico.amorphous.types.NetworkLink;
 public class AddHost implements IAmorphStateMessage<NetworkHost> {
 
 	private static final long serialVersionUID = -7817703665630531213L;
-	private final String nodeId;
 	protected final NetworkHost host;
 	protected final NetworkLink networkLink;
 	
-	public AddHost(String NodeId, NetworkHost Host, NetworkLink NetLink) {
-		this.nodeId = NodeId;
+	public AddHost(NetworkHost Host, NetworkLink NetLink) {
 		this.host = Host;
 		this.networkLink = NetLink;
 	}
 
 	@Override
 	public String getOriginatingNodeId() {
-		return this.nodeId;
+		return null;
 	}
 
 	@Override
