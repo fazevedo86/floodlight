@@ -79,6 +79,9 @@ public interface IAmorphGlobalStateService extends IFloodlightService {
 	 */
 	@SuppressWarnings("rawtypes")
 	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener callback) throws InvalidAmorphSyncQueueException;
+
+	@SuppressWarnings("rawtypes")
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, ClusterNode receiver, IMessageStateListener callback) throws InvalidAmorphSyncQueueException;
 	
 	/**
 	 * Register a new sync message in a given queue.

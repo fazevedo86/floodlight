@@ -169,6 +169,19 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	}
 	
 	@SuppressWarnings("rawtypes")
+	public int queueSyncMessage(String queueName, IAmorphStateMessage message, ClusterNode receiver, IMessageStateListener callback) throws InvalidAmorphSyncQueueException {
+		if(this.outboundMessageQueues.containsKey(queueName)){
+			MessageContainer syncMessage = new MessageContainer(this.amorphClusterService.getNodeId(), receiver, this.msgCounter.getAndIncrement(), queueName, message, SyncType.GUARANTEED, callback);
+			this.addToMessageHistory(syncMessage);
+			this.outboundMessageQueues.get(queueName).add(syncMessage);
+
+			return syncMessage.messageId;
+		} else {
+			throw new InvalidAmorphSyncQueueException(queueName);
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
 	@Override
 	public int queueSyncMessage(String queueName, IAmorphStateMessage message, SyncType syncType, IMessageStateListener callback) throws InvalidAmorphSyncQueueException {
 		if(this.outboundMessageQueues.containsKey(queueName)){
@@ -428,7 +441,10 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 								
 							case GUARANTEED:
 								try {
-									this.amorphClusterService.getClusterComm().sendGuaranteedDeliveryMessage(msg);
+									if(msg.getReceiverNode() == null)
+										this.amorphClusterService.getClusterComm().sendGuaranteedDeliveryMessage(msg);
+									else
+										this.amorphClusterService.getClusterComm().sendMessage(msg.getReceiverNode(), msg);
 								} catch (InvalidAmorphClusterMessageException e) {
 									GlobalStateService.logger.error("Failed to send message: " + e.getMessage());
 								}
