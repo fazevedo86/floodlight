@@ -493,11 +493,6 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 				this.printNetworkGraph();
 				
-				// DEBUG
-				if(this.localHosts.size() >= 1)
-					this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], host);
-				
-				
 				return true;
 			}
 		}
