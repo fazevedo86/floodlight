@@ -464,10 +464,6 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			}
 		}
 		
-		// DEBUG
-		if(this.localHosts.size() > 1)
-			this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], (NetworkHost)this.localHosts.values().toArray()[1]);
-		
 		return success;
 	}
 
@@ -496,6 +492,11 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				}
 			
 				this.printNetworkGraph();
+				
+				// DEBUG
+				if(this.localHosts.size() >= 1)
+					this.getNetworkPath((NetworkHost)this.localHosts.values().toArray()[0], host);
+				
 				
 				return true;
 			}
@@ -646,7 +647,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		for(int i = path.size() - 1; i >= 0; i--){
 			output.append(i + ") s" + path.get(i).getSwitch().getNodeId() + "\n");
 			output.append("\t INBOUND eth" + path.get(i).getInboundSwitchPort() + "\n");
-			output.append("\t OUTBOUND eth" + path.get(i).getInboundSwitchPort() + "\n");
+			output.append("\t OUTBOUND eth" + path.get(i).getOutboundSwitchPort() + "\n");
 		}
 		
 		output.append("\n");
