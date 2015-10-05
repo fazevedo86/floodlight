@@ -28,3 +28,4 @@ net.floodlightcontroller.accesscontrollist.ACL
 net.floodlightcontroller.dhcpserver.DHCPServer
 net.floodlightcontroller.learningswitch.LearningSwitch
 pt.ulisboa.tecnico.amorphous.Amorphous
+pt.ulisboa.tecnico.distributed.forwarding.Forwarding
