@@ -391,6 +391,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				}
 				
 				// Program flow on origin ofswitch
+				final OFPacketIn pin = pi;
+				final FloodlightContext ctx = cntx;
 				final FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
 				fpr.setIPProtocol(IPProto);
 				fpr.setSourceTransportPort(srcPort);
@@ -409,7 +411,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 							}
 						}
 						// Program flow on origin switch
-						Forwarding.this.processFlowProgrammingRequest(fpr, pi, cntx);
+						Forwarding.this.processFlowProgrammingRequest(fpr, pin, ctx);
 						
 						Forwarding.this.distributedFlowDependencies.remove(cookie);
 					}
