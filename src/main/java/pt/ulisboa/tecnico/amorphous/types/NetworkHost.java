@@ -31,15 +31,15 @@ public class NetworkHost extends NetworkNode {
 	public boolean equals(Object obj){
 		if(obj instanceof NetworkHost){
 			NetworkHost target = (NetworkHost)obj;
-			if(this.IPAddress != null)
-				if(target.IPAddress != null)
-					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan) && this.IPAddress.equals(target.IPAddress);
-				else
-					return false;
-			else
-				if(target.IPAddress != null)
-					return false;
-				else
+//			if(this.IPAddress != null)
+//				if(target.IPAddress != null)
+//					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan) && this.IPAddress.equals(target.IPAddress);
+//				else
+//					return false;
+//			else
+//				if(target.IPAddress != null)
+//					return false;
+//				else
 					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan);
 		} else {
 			return false;

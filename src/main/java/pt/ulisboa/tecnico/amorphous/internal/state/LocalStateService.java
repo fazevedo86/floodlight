@@ -513,7 +513,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		} else {
 			NetworkHost oldHost = this.localHosts.get(Host.getDeviceKey());
 			NetworkHost newHost = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
-			if(!oldHost.equals(newHost)){
+			if(oldHost != null && (!oldHost.equals(newHost)) ){
 				this.removeLocalHost(Host);
 				this.addLocalHost(Host);
 			}
