@@ -236,187 +236,187 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	}
 
 	protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
-		// Check if we have the location of the destination
-		IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-
-		if (dstDevice != null) {
-			IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-			DatapathId srcIsland = topologyService.getL2DomainId(sw.getId());
-
-			if (srcDevice == null) {
-				log.debug("No device entry found for source device");
-				return;
+		// Amorphous coordinated Flow Programming
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		IPv4 ipPacket = null;
+		Integer srcIP = FlowProgrammingRequest.INFO_NOT_SET, dstIP = FlowProgrammingRequest.INFO_NOT_SET,
+				srcPort = FlowProgrammingRequest.INFO_NOT_SET, dstPort = FlowProgrammingRequest.INFO_NOT_SET;
+		Short IPProto = FlowProgrammingRequest.INFO_NOT_SET;
+		
+		if(eth.getEtherType().equals(Ethernet.TYPE_IPv4)){
+			ipPacket = (IPv4)eth.getPayload();
+			srcIP = ipPacket.getSourceAddress().getInt();
+			dstIP = ipPacket.getDestinationAddress().getInt();
+			IPProto = ipPacket.getProtocol().getIpProtocolNumber();
+			if(ipPacket.getProtocol().equals(IpProtocol.TCP)){
+				TCP transportPacket = (TCP) ipPacket.getPayload();
+				srcPort = transportPacket.getSourcePort().getPort();
+				dstPort = transportPacket.getDestinationPort().getPort();
+			} else if(ipPacket.getProtocol().equals(IpProtocol.UDP)){
+				UDP transportPacket = (UDP) ipPacket.getPayload();
+				srcPort = transportPacket.getSourcePort().getPort();
+				dstPort = transportPacket.getDestinationPort().getPort();
 			}
-			if (srcIsland == null) {
-				log.debug("No openflow island found for source {}/{}",
-						sw.getId().toString(), inPort);
-				return;
-			}
-
-			// Validate that we have a destination known on the same island
-			// Validate that the source and destination are not on the same switchport
-			boolean on_same_island = false;
-			boolean on_same_if = false;
-			for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-				DatapathId dstSwDpid = dstDap.getSwitchDPID();
-				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
-				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
-					on_same_island = true;
-					if (sw.getId().equals(dstSwDpid) && inPort.equals(dstDap.getPort())) {
-						on_same_if = true;
-					}
-					break;
-				}
-			}
-
-			if (!on_same_island) {
-				// Flood since we don't know the dst device
-				if (log.isTraceEnabled()) {
-					log.trace("No first hop island found for destination " +
-							"device {}, Action = flooding", dstDevice);
-				}
-				doFlood(sw, pi, cntx);
-				return;
-			}
-
-			if (on_same_if) {
-				if (log.isTraceEnabled()) {
-					log.trace("Both source and destination are on the same " +
-							"switch/port {}/{}, Action = NOP",
-							sw.toString(), inPort);
-				}
-				return;
-			}
-
-			// Install all the routes where both src and dst have attachment
-			// points.  Since the lists are stored in sorted order we can
-			// traverse the attachment points in O(m+n) time
-			SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
-			Arrays.sort(srcDaps, clusterIdComparator);
-			SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();
-			Arrays.sort(dstDaps, clusterIdComparator);
-
-			int iSrcDaps = 0, iDstDaps = 0;
-
-			while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
-				SwitchPort srcDap = srcDaps[iSrcDaps];
-				SwitchPort dstDap = dstDaps[iDstDaps];
-
-				// srcCluster and dstCluster here cannot be null as
-				// every switch will be at least in its own L2 domain.
-				DatapathId srcCluster = topologyService.getL2DomainId(srcDap.getSwitchDPID());
-				DatapathId dstCluster = topologyService.getL2DomainId(dstDap.getSwitchDPID());
-
-				int srcVsDest = srcCluster.compareTo(dstCluster);
-				if (srcVsDest == 0) {
-					if (!srcDap.equals(dstDap)) {
-						Route route =
-								routingEngineService.getRoute(srcDap.getSwitchDPID(), 
-										srcDap.getPort(),
-										dstDap.getSwitchDPID(),
-										dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
-						if (route != null) {
-							if (log.isTraceEnabled()) {
-								log.trace("pushRoute inPort={} route={} " +
-										"destination={}:{}",
-										new Object[] { inPort, route,
-										dstDap.getSwitchDPID(),
-										dstDap.getPort()});
-							}
-
-							U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-
-							Match m = createMatchFromPacket(sw, inPort, cntx);
-
-							pushRoute(route, m, pi, sw.getId(), cookie,
-									cntx, requestFlowRemovedNotifn, false,
-									OFFlowModCommand.ADD);
-						}
-					}
-					iSrcDaps++;
-					iDstDaps++;
-				} else if (srcVsDest < 0) {
-					iSrcDaps++;
-				} else {
-					iDstDaps++;
-				}
-			}
-		} else {
-			// Amorphous coordinated Flow Programming
-			Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-			IPv4 ipPacket = null;
-			Integer srcIP = FlowProgrammingRequest.INFO_NOT_SET, dstIP = FlowProgrammingRequest.INFO_NOT_SET,
-					srcPort = FlowProgrammingRequest.INFO_NOT_SET, dstPort = FlowProgrammingRequest.INFO_NOT_SET;
-			Short IPProto = FlowProgrammingRequest.INFO_NOT_SET;
+		}
+		NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
+		NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
+		
+		// Distributed network path
+		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
+		if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
+			Forwarding.log.info("Performing distributed forwarding!");
+			final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
+			this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
 			
-			if(eth.getEtherType().equals(Ethernet.TYPE_IPv4)){
-				ipPacket = (IPv4)eth.getPayload();
-				srcIP = ipPacket.getSourceAddress().getInt();
-				dstIP = ipPacket.getDestinationAddress().getInt();
-				IPProto = ipPacket.getProtocol().getIpProtocolNumber();
-				if(ipPacket.getProtocol().equals(IpProtocol.TCP)){
-					TCP transportPacket = (TCP) ipPacket.getPayload();
-					srcPort = transportPacket.getSourcePort().getPort();
-					dstPort = transportPacket.getDestinationPort().getPort();
-				} else if(ipPacket.getProtocol().equals(IpProtocol.UDP)){
-					UDP transportPacket = (UDP) ipPacket.getPayload();
-					srcPort = transportPacket.getSourcePort().getPort();
-					dstPort = transportPacket.getDestinationPort().getPort();
-				}
-			}
-			NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
-			NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
-			
-			
-			// Distributed network path
-			List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
-			if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
-				final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
-				this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
-				
-				for(int i = 1; i < path.size(); i++){
-					// Generate Flow Programming Request
-					FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(i), src, dst, eth.getEtherType());
-					fpr.setIPProtocol(IPProto);
-					fpr.setSourceTransportPort(srcPort);
-					fpr.setDestinationTransportPort(dstPort);
-					if( this.amorphTopologyService.isSwitchManagedLocally(path.get(i).getSwitch()) ){
-						// Execute local flow programming
-						this.processFlowProgrammingRequest(fpr, null, null);
-					} else {
-						// Send out messages
-						this.sendForwardRequest(fpr);
-					}
-				}
-				
-				// Program flow on origin ofswitch
-				final OFPacketIn pin = pi;
-				final FloodlightContext ctx = cntx;
-				final FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
+			for(int i = 1; i < path.size(); i++){
+				// Generate Flow Programming Request
+				FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(i), src, dst, eth.getEtherType());
 				fpr.setIPProtocol(IPProto);
 				fpr.setSourceTransportPort(srcPort);
 				fpr.setDestinationTransportPort(dstPort);
-				
-				(new Thread(){
-					@Override
-					public void run(){
-						// Wait for all dependencies to be met
-						while(Forwarding.this.distributedFlowDependencies.get(cookie).size() > 0){
-							// Sleep it out
-							try {
-								Thread.sleep(5);
-							} catch (InterruptedException e) {
-								Forwarding.log.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+				if( this.amorphTopologyService.isSwitchManagedLocally(path.get(i).getSwitch()) ){
+					// Execute local flow programming
+					this.processFlowProgrammingRequest(fpr, null, null);
+				} else {
+					// Send out messages
+					this.sendForwardRequest(fpr);
+				}
+			}
+			
+			// Program flow on origin ofswitch
+			final OFPacketIn pin = pi;
+			final FloodlightContext ctx = cntx;
+			final FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
+			fpr.setIPProtocol(IPProto);
+			fpr.setSourceTransportPort(srcPort);
+			fpr.setDestinationTransportPort(dstPort);
+			
+			(new Thread(){
+				@Override
+				public void run(){
+					// Wait for all dependencies to be met
+					while(Forwarding.this.distributedFlowDependencies.get(cookie).size() > 0){
+						// Sleep it out
+						try {
+							Thread.sleep(5);
+						} catch (InterruptedException e) {
+							Forwarding.log.error(e.getClass().getSimpleName() + ": " + e.getMessage());
+						}
+					}
+					// Program flow on origin switch
+					Forwarding.this.processFlowProgrammingRequest(fpr, pin, ctx);
+					
+					Forwarding.this.distributedFlowDependencies.remove(cookie);
+				}
+			}).start();
+			
+		} else {
+			OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+			// Check if we have the location of the destination
+			IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+	
+			if (dstDevice != null) {
+				IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+				DatapathId srcIsland = topologyService.getL2DomainId(sw.getId());
+	
+				if (srcDevice == null) {
+					log.debug("No device entry found for source device");
+					return;
+				}
+				if (srcIsland == null) {
+					log.debug("No openflow island found for source {}/{}",
+							sw.getId().toString(), inPort);
+					return;
+				}
+	
+				// Validate that we have a destination known on the same island
+				// Validate that the source and destination are not on the same switchport
+				boolean on_same_island = false;
+				boolean on_same_if = false;
+				for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
+					DatapathId dstSwDpid = dstDap.getSwitchDPID();
+					DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
+					if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
+						on_same_island = true;
+						if (sw.getId().equals(dstSwDpid) && inPort.equals(dstDap.getPort())) {
+							on_same_if = true;
+						}
+						break;
+					}
+				}
+	
+				if (!on_same_island) {
+					// Flood since we don't know the dst device
+					if (log.isTraceEnabled()) {
+						log.trace("No first hop island found for destination " +
+								"device {}, Action = flooding", dstDevice);
+					}
+					doFlood(sw, pi, cntx);
+					return;
+				}
+	
+				if (on_same_if) {
+					if (log.isTraceEnabled()) {
+						log.trace("Both source and destination are on the same " +
+								"switch/port {}/{}, Action = NOP",
+								sw.toString(), inPort);
+					}
+					return;
+				}
+	
+				// Install all the routes where both src and dst have attachment
+				// points.  Since the lists are stored in sorted order we can
+				// traverse the attachment points in O(m+n) time
+				SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
+				Arrays.sort(srcDaps, clusterIdComparator);
+				SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();
+				Arrays.sort(dstDaps, clusterIdComparator);
+	
+				int iSrcDaps = 0, iDstDaps = 0;
+	
+				while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
+					SwitchPort srcDap = srcDaps[iSrcDaps];
+					SwitchPort dstDap = dstDaps[iDstDaps];
+	
+					// srcCluster and dstCluster here cannot be null as
+					// every switch will be at least in its own L2 domain.
+					DatapathId srcCluster = topologyService.getL2DomainId(srcDap.getSwitchDPID());
+					DatapathId dstCluster = topologyService.getL2DomainId(dstDap.getSwitchDPID());
+	
+					int srcVsDest = srcCluster.compareTo(dstCluster);
+					if (srcVsDest == 0) {
+						if (!srcDap.equals(dstDap)) {
+							Route route =
+									routingEngineService.getRoute(srcDap.getSwitchDPID(), 
+											srcDap.getPort(),
+											dstDap.getSwitchDPID(),
+											dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
+							if (route != null) {
+								if (log.isTraceEnabled()) {
+									log.trace("pushRoute inPort={} route={} " +
+											"destination={}:{}",
+											new Object[] { inPort, route,
+											dstDap.getSwitchDPID(),
+											dstDap.getPort()});
+								}
+	
+								U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+	
+								Match m = createMatchFromPacket(sw, inPort, cntx);
+	
+								pushRoute(route, m, pi, sw.getId(), cookie,
+										cntx, requestFlowRemovedNotifn, false,
+										OFFlowModCommand.ADD);
 							}
 						}
-						// Program flow on origin switch
-						Forwarding.this.processFlowProgrammingRequest(fpr, pin, ctx);
-						
-						Forwarding.this.distributedFlowDependencies.remove(cookie);
+						iSrcDaps++;
+						iDstDaps++;
+					} else if (srcVsDest < 0) {
+						iSrcDaps++;
+					} else {
+						iDstDaps++;
 					}
-				}).start();
-				
+				}
 			} else {
 				// Flood since we don't know the dst device
 				doFlood(sw, pi, cntx);
