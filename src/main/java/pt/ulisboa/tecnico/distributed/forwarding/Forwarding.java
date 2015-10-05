@@ -295,7 +295,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				@Override
 				public void run(){
 					// Wait for all dependencies to be met
-					while(Forwarding.this.distributedFlowDependencies.get(cookie).size() > 0){
+					while(Forwarding.this.distributedFlowDependencies.containsKey(cookie) && Forwarding.this.distributedFlowDependencies.get(cookie).size() > 0){
 						// Sleep it out
 						try {
 							Thread.sleep(5);
@@ -433,6 +433,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	}
 	
 	protected void receiveFlowProgrammingConfirmation(FlowProgrammingConfirmation message){
+		Forwarding.log.info("Received a " + FlowProgrammingConfirmation.class.getSimpleName() + " message!");
 		if(this.distributedFlowDependencies.containsKey(message.getCookie())){
 			this.distributedFlowDependencies.get(message.getCookie()).remove(message.getRawDatapathId());
 		}
@@ -450,11 +451,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		}
 	}
 	
-	protected void receiveForwardRequest(FlowProgrammingRequest message){
-		if(!(message instanceof FlowProgrammingRequest))
-			return;
+	protected void receiveForwardRequest(FlowProgrammingRequest request){
+		Forwarding.log.info("Received a " + FlowProgrammingRequest.class.getSimpleName() + " message!");
 		
-		FlowProgrammingRequest request = (FlowProgrammingRequest)message;
 		boolean success = this.processFlowProgrammingRequest(request, null, null);
 		
 		FlowProgrammingConfirmation fpc = new FlowProgrammingConfirmation(request.getCookie(), request.getNetworkHop().getSwitch().getNodeId(), success);

@@ -204,7 +204,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 			// Issue sync request
 			MessageContainer envelope = new MessageContainer(this.amorphClusterService.getNodeId(), this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, new SyncReq(), SyncType.GUARANTEED, null);
 			this.amorphClusterService.getClusterComm().sendMessage(sourceNode, envelope);
-			GlobalStateService.logger.error("SyncReq sent to node " + sourceNode.getNodeIP().getHostAddress() );
+			GlobalStateService.logger.error("SyncReq sent to node " + sourceNode.getNodeIP().getHostAddress() + " (" + sourceNode.getNodeID() + ")" );
 			
 			// Add a security check to the inbound sync message
 			this.syncSourceNodeId = sourceNode.getNodeID();
@@ -266,14 +266,14 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 	//------------------------------------------------------------------------
 	
 	private void addToMessageHistory(MessageContainer msg){
-		synchronized (this.messageHistory) {
-			if(this.messageHistory.size() >= GlobalStateService.MSG_HISTORY_SIZE){
-				this.messageHistory.remove(this.oldestMessage);
-				this.oldestMessage++;
-			}
-			
-			this.messageHistory.put(msg.messageId,msg);
-		}
+//		synchronized (this.messageHistory) {
+//			if(this.messageHistory.size() >= GlobalStateService.MSG_HISTORY_SIZE){
+//				this.messageHistory.remove(this.oldestMessage);
+//				this.oldestMessage++;
+//			}
+//			
+//			this.messageHistory.put(msg.messageId,msg);
+//		}
 	}
 	
 	@SuppressWarnings("unused")
@@ -320,7 +320,7 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 
 	@SuppressWarnings("unused")
 	private void handleMessageSyncReq(ClusterNode origin, IAmorphClusterMessage message){
-		GlobalStateService.logger.info("Received a new SyncReq message from node " + origin.getNodeID());
+		GlobalStateService.logger.info("Received a new SyncReq message from node " + origin.getNodeIP().getHostAddress() + " (" + origin.getNodeID() + ")" );
 		
 		FullSync replyMsg = LocalStateService.getInstance().getFullClusterState();
 		MessageContainer envelope = new MessageContainer(this.amorphClusterService.getNodeId(), this.msgCounter.getAndIncrement(), GlobalStateService.STATE_SYNC_QUEUE, replyMsg, SyncType.GUARANTEED, null);
@@ -336,11 +336,11 @@ public class GlobalStateService extends Thread implements IAmorphGlobalStateServ
 		FullSync msg = (FullSync)message;
 		
 		if(this.syncSourceNodeId.equals(origin.getNodeID())){
-			GlobalStateService.logger.info("Received a new FullSync message from node " + origin.getNodeID());
+			GlobalStateService.logger.info("Received a new FullSync message from node " + origin.getNodeIP().getHostAddress() + " (" + origin.getNodeID() + ")" );
 			LocalStateService.getInstance().setFullClusterState(msg);
 			this.syncSourceNodeId = "";
 		} else {
-			GlobalStateService.logger.info("Discarding unexpected FullSync message from node " + origin.getNodeID());
+			GlobalStateService.logger.info("Discarding unexpected FullSync message from node " + origin.getNodeIP().getHostAddress() + " (" + origin.getNodeID() + ")" );
 		}
 	}
 	
