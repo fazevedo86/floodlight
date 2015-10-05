@@ -434,10 +434,9 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		boolean success = false;
 		
 		if(Host.getAttachmentPoints().length == 1){
-			NetworkHost simpleHost = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), null, null);
 			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
 			
-			if(this.networkGraph.containsVertex(simpleHost) || this.networkGraph.containsVertex(host))
+			if(this.networkGraph.containsVertex(host))
 				return false;
 			
 			NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
@@ -447,13 +446,8 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			
 			// Existence and affinity checks
 			if( !this.networkGraph.containsEdge(link) && this.networkGraph.containsVertex(ofswitch) && this.localSwitches.containsKey(ofswitch) ){
-				
-				if(!this.localHosts.containsKey(Host.getDeviceKey()))
-					this.localHosts.put(Host.getDeviceKey(), host);
-				
-				// Sanity check?
-				if(!this.networkGraph.containsVertex(host))
-					this.networkGraph.addVertex(host);
+				this.localHosts.put(Host.getDeviceKey(), host);
+				this.networkGraph.addVertex(host);
 				
 				// Add the host and link
 				success = this.networkGraph.addEdge(ofswitch, host, link);
