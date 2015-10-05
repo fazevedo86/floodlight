@@ -11,8 +11,8 @@ public class NetworkNode implements Serializable, Comparable<NetworkNode> {
 		OFSWITCH
 	}
 
-	private final Long nodeId;
-	private final NetworkNodeType type;
+	protected final Long nodeId;
+	protected final NetworkNodeType type;
 	
 	public NetworkNode(Long nodeId, NetworkNodeType nodeType) {
 		this.nodeId = nodeId;

@@ -26,4 +26,31 @@ public class NetworkHost extends NetworkNode {
 	public Integer getIPAddress(){
 		return this.IPAddress;
 	}
+	
+	@Override
+	public boolean equals(Object obj){
+		if(obj instanceof NetworkHost){
+			NetworkHost target = (NetworkHost)obj;
+			if(this.IPAddress != null)
+				if(target.IPAddress != null)
+					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan) && this.IPAddress.equals(target.IPAddress);
+				else
+					return false;
+			else
+				if(target.IPAddress != null)
+					return false;
+				else
+					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan) && this.IPAddress.equals(target.IPAddress);
+		} else {
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode(){
+		if(this.IPAddress != null)
+			return ((this.nodeId.intValue() + this.vlan) / (this.type.ordinal() + 1)) * (this.nodeId.intValue() + this.vlan);
+		else
+			return ((this.nodeId.intValue() + this.vlan + this.IPAddress.intValue()) / (this.type.ordinal() + 1)) * (this.nodeId.intValue() + this.vlan + this.IPAddress.intValue());
+	}
 }
