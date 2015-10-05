@@ -40,7 +40,7 @@ public class NetworkHost extends NetworkNode {
 				if(target.IPAddress != null)
 					return false;
 				else
-					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan) && this.IPAddress.equals(target.IPAddress);
+					return this.MACAddress.equals(target.MACAddress) && this.vlan.equals(target.vlan);
 		} else {
 			return false;
 		}
