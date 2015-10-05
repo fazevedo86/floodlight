@@ -372,7 +372,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			// Distributed network path
 			List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
 			if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
-				U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
+				final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
 				this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
 				
 				for(int i = 1; i < path.size(); i++){
@@ -391,7 +391,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				}
 				
 				// Program flow on origin ofswitch
-				FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
+				final FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
 				fpr.setIPProtocol(IPProto);
 				fpr.setSourceTransportPort(srcPort);
 				fpr.setDestinationTransportPort(dstPort);
