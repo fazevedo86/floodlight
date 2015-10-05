@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService.EventSource;
+import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.cluster.ClusterService;
 import pt.ulisboa.tecnico.amorphous.internal.state.GlobalStateService;
@@ -73,6 +74,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 		Collection<Class<? extends IFloodlightService>> exportedServices = new ArrayList<Class<? extends IFloodlightService>>(2);
 		exportedServices.add(IAmorphTopologyManagerService.class);
 		exportedServices.add(IAmorphTopologyService.class);
+		exportedServices.add(IAmorphGlobalStateService.class);
 		
 		return exportedServices;
 	}
@@ -85,6 +87,7 @@ public class Amorphous implements IFloodlightModule, IOFSwitchListener, ITopolog
 		Map<Class<? extends IFloodlightService>, IFloodlightService> implementedServices = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
 		implementedServices.put(IAmorphTopologyService.class, (IAmorphTopologyService)this.localStateService);
 		implementedServices.put(IAmorphTopologyManagerService.class, this.localStateService);
+		implementedServices.put(IAmorphGlobalStateService.class, this.globalStateService);
 		
 		return implementedServices;
 	}
