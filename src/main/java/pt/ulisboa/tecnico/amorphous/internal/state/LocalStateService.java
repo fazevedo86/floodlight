@@ -440,7 +440,27 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				return false;
 			
 			NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
-			NetworkLink link = new NetworkLink(ofswitch.getNodeId(), Host.getAttachmentPoints()[0].getPort().getPortNumber(), 
+			Integer portNumber = Host.getAttachmentPoints()[0].getPort().getPortNumber();
+			
+			// Validate that the host is not connected to a neighboring ofswitch
+			NetworkNode otherEnd = null;
+			for(NetworkLink existingLink : this.networkGraph.edgesOf(ofswitch)){
+				if(existingLink.getNodeA().equals(ofswitch.getNodeId())){
+					if(existingLink.getNodeAPortNumber().equals(portNumber)){
+						otherEnd = new NetworkNode(existingLink.getNodeB(), NetworkNodeType.OFSWITCH);
+						break;
+					}
+				} else {
+					if(existingLink.getNodeBPortNumber().equals(portNumber)){
+						otherEnd = new NetworkNode(existingLink.getNodeA(), NetworkNodeType.OFSWITCH);
+						break;
+					}
+				}
+			}
+			if(otherEnd != null && this.networkGraph.containsVertex(otherEnd))
+				return false;
+			
+			NetworkLink link = new NetworkLink(ofswitch.getNodeId(), portNumber, 
 										host.getNodeId(), 0, 
 										this.switchService.getSwitch(Host.getAttachmentPoints()[0].getSwitchDPID()).getPort(Host.getAttachmentPoints()[0].getPort()).getCurrSpeed());
 			
