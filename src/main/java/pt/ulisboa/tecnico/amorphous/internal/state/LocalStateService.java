@@ -503,8 +503,16 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 
 	@Override
 	public synchronized boolean updateLocalHost(IDevice Host){
-		if(Host.getAttachmentPoints().length == 0)
+		if(Host.getAttachmentPoints().length == 0){
 			return this.removeLocalHost(Host);
+		} else {
+			NetworkHost oldHost = this.localHosts.get(Host.getDeviceKey());
+			NetworkHost newHost = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+			if(!oldHost.equals(newHost)){
+				this.removeLocalHost(Host);
+				this.addLocalHost(Host);
+			}
+		}
 		
 		return false;
 	}

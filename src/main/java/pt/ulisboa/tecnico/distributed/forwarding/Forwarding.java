@@ -121,7 +121,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		this.amorphTopologyService = context.getServiceImpl(IAmorphTopologyService.class);
 		this.amorphGlobalStateService = context.getServiceImpl(IAmorphGlobalStateService.class);
 		try {
-			this.amorphGlobalStateService.registerSyncQueue(Forwarding.class.getName(), SyncType.GUARANTEED, null);
+			this.amorphGlobalStateService.registerSyncQueue(Forwarding.class.getName(), SyncType.GUARANTEED, this);
 		} catch (InvalidAmorphSyncQueueException e) {
 			Forwarding.log.error("Failed to register my own Amorphous message queue!");
 		}
