@@ -105,17 +105,17 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	//------------------------------------------------------------------------
 	
 	@Override
-	public boolean isSwitchRegistered(DatapathId OFSwitchId){
+	public synchronized boolean isSwitchRegistered(DatapathId OFSwitchId){
 		return this.isSwitchRegistered(new NetworkNode(OFSwitchId.getLong(),NetworkNodeType.OFSWITCH));
 	}
 	
 	@Override
-	public boolean isSwitchRegistered(NetworkNode node){
+	public synchronized boolean isSwitchRegistered(NetworkNode node){
 		return this.networkGraph.containsVertex(node) && (this.localSwitches.containsKey(node) || this.remoteSwitchAffinity.containsKey(node));
 	}
 	
 	@Override
-	public boolean isSwitchLinkRegistered(Link link){
+	public synchronized boolean isSwitchLinkRegistered(Link link){
 		try{
 			return this.isSwitchLinkRegistered(link.getSrc().getLong(), link.getSrcPort().getPortNumber(), link.getDst().getLong(), link.getDstPort().getPortNumber());
 		} catch(NullPointerException npe){
@@ -125,16 +125,16 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	}
 	
 	@Override
-	public boolean isSwitchLinkRegistered(Long srcId, Integer srcPortNumber, Long dstId, Integer dstPortNumber){
+	public synchronized boolean isSwitchLinkRegistered(Long srcId, Integer srcPortNumber, Long dstId, Integer dstPortNumber){
 		NetworkLink link = new NetworkLink(srcId, srcPortNumber, dstId, dstPortNumber, 0L);
 		return this.networkGraph.containsEdge(link);
 	}
 	
-	public boolean isSwitchManagedLocally(NetworkNode OFSwitch){
+	public synchronized boolean isSwitchManagedLocally(NetworkNode OFSwitch){
 		return this.localSwitches.containsKey(OFSwitch);
 	}
 	
-	public ClusterNode getSwitchManager(NetworkNode OFSwitch){
+	public synchronized ClusterNode getSwitchManager(NetworkNode OFSwitch){
 		if(this.remoteSwitchAffinity.containsKey(OFSwitch)){
 			return ClusterService.getInstance().getClusterNode(this.remoteSwitchAffinity.get(OFSwitch));
 		}
@@ -159,7 +159,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		}
 	}
 
-	public List<NetworkHop> getNetworkPath(NetworkHost origin, NetworkHost destination){
+	public synchronized List<NetworkHop> getNetworkPath(NetworkHost origin, NetworkHost destination){
 		if(this.networkGraph.containsVertex(origin) && this.networkGraph.containsVertex(destination)){
 			DijkstraShortestPath<NetworkNode, NetworkLink> dijkstra = new DijkstraShortestPath<NetworkNode, NetworkLink>(this.networkGraph, origin, destination);
 			List<NetworkNode> nodes = Graphs.getPathVertexList(dijkstra.getPath());
@@ -434,7 +434,12 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		boolean success = false;
 		
 		if(Host.getAttachmentPoints().length == 1){
+			NetworkHost simpleHost = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), null, null);
 			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+			
+			if(this.networkGraph.containsVertex(simpleHost) || this.networkGraph.containsVertex(host))
+				return false;
+			
 			NetworkNode ofswitch = new NetworkNode(Host.getAttachmentPoints()[0].getSwitchDPID().getLong(), NetworkNodeType.OFSWITCH);
 			NetworkLink link = new NetworkLink(ofswitch.getNodeId(), Host.getAttachmentPoints()[0].getPort().getPortNumber(), 
 										host.getNodeId(), 0, 
