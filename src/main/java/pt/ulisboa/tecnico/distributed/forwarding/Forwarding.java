@@ -547,11 +547,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 			}
 			
-			// Match IP header if it's an IP flow
-			if( (src.getIPAddress() != 0) && (dst.getIPAddress() != 0) && (fpr.getEtherType().equals(EthType.IPv4)) ){
+			
+			// Match IP header if it's an IP flow and we know the endpoints IP addresses
+			IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
+			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
+			
+			if( (!srcIp.equals(IPv4Address.NONE)) && (!dstIp.equals(IPv4Address.NONE)) && (fpr.getEtherType().equals(EthType.IPv4)) ){
 				// Match IP header fields
-				IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
-				IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
 				.setExact(MatchField.IPV4_SRC, srcIp)
 				.setExact(MatchField.IPV4_DST, dstIp);

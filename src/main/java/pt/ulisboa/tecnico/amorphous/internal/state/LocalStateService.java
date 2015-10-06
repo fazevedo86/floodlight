@@ -436,7 +436,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		if(Host.getAttachmentPoints().length == 1){
 		
-			Integer IPAddress = 0;
+			Integer IPAddress = Host.getIPv4Addresses()[0].getInt();
 			
 			for(IPv4Address ip : Host.getIPv4Addresses())
 				if( (!ip.equals(IPv4Address.NONE)) && (!ip.isBroadcast()))
