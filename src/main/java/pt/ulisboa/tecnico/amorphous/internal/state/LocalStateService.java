@@ -29,6 +29,7 @@ import org.jgrapht.Graphs;
 import org.jgrapht.alg.DijkstraShortestPath;
 import org.jgrapht.graph.WeightedMultigraph;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -434,7 +435,14 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		boolean success = false;
 		
 		if(Host.getAttachmentPoints().length == 1){
-			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), Host.getIPv4Addresses()[0].getInt());
+		
+			Integer IPAddress = 0;
+			
+			for(IPv4Address ip : Host.getIPv4Addresses())
+				if( (!ip.equals(IPv4Address.NONE)) && (!ip.isBroadcast()))
+					IPAddress = ip.getInt();
+			
+			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), IPAddress);
 			
 			if(this.networkGraph.containsVertex(host))
 				return false;
@@ -527,6 +535,13 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 	public synchronized boolean updateLocalHost(IDevice Host){
 		if(Host.getAttachmentPoints().length == 0){
 			return this.removeLocalHost(Host);
+		} else {
+			NetworkHost host = this.localHosts.get(Host.getDeviceKey());
+			for(IPv4Address IPAddress : Host.getIPv4Addresses())
+				if( (!IPAddress.equals(IPv4Address.NONE)) && (!IPAddress.isBroadcast()) && (IPAddress.getInt() != host.getIPAddress()) ){					
+					this.removeLocalHost(Host);
+					this.addLocalHost(Host);
+				}
 		}
 		
 		return false;

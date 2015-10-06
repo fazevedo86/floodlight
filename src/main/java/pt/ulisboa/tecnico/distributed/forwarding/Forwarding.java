@@ -547,31 +547,30 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 			}
 			
-//			// Match IP header if it's an IP flow
-//			if (fpr.getEtherType().equals(EthType.IPv4)) {
-//				
-//				// Match IP header fields
-//				IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
-//				IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
-//				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-//				.setExact(MatchField.IPV4_SRC, srcIp)
-//				.setExact(MatchField.IPV4_DST, dstIp);
-//
-//				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {
-//					// Match TCP header fields
-//					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-//					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
-//					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
-//				} else if (fpr.getIPProtocol() == IpProtocol.UDP.getIpProtocolNumber()) {
-//					// Match UDP header fields
-//					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-//					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
-//					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
-//					}
-//			} else if (fpr.getEtherType().equals(EthType.ARP)) {
-//				// Match ARP header field
-//				mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
-//			}
+			// Match IP header if it's an IP flow
+			if( (src.getIPAddress() != 0) && (dst.getIPAddress() != 0) && (fpr.getEtherType().equals(EthType.IPv4)) ){
+				// Match IP header fields
+				IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
+				IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
+				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+				.setExact(MatchField.IPV4_SRC, srcIp)
+				.setExact(MatchField.IPV4_DST, dstIp);
+
+				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {
+					// Match TCP header fields
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
+					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
+				} else if (fpr.getIPProtocol() == IpProtocol.UDP.getIpProtocolNumber()) {
+					// Match UDP header fields
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
+					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
+					}
+			} else if (fpr.getEtherType().equals(EthType.ARP)) {
+				// Match ARP header field
+				mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+			}
 			return mb.build();
 		}
 		
