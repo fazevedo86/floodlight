@@ -549,17 +549,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
 			}
 			
-			
 			// Match IP header if it's an IP flow and we know the endpoints IP addresses
 			IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
 			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 			
-			if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) && (fpr.getEtherType().equals(EthType.IPv4)) ){
-				// Match IP header fields
-				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-				.setExact(MatchField.IPV4_SRC, srcIp)
-				.setExact(MatchField.IPV4_DST, dstIp);
-
+			if(fpr.getEtherType().equals(EthType.IPv4)){
+				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+				if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) ){
+					// Match IP header fields
+					mb.setExact(MatchField.IPV4_SRC, srcIp)
+					.setExact(MatchField.IPV4_DST, dstIp);
+				} else {
+					Forwarding.log.error("Detected an IPv4 flow but was unable to determine IP Addresses: src=" + srcIp + " dst=" + dstIp);
+				}
+	
 				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {
 					// Match TCP header fields
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
