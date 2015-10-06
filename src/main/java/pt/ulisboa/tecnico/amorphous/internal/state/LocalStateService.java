@@ -167,8 +167,8 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			List<NetworkLink> links = dijkstra.getPath().getEdgeList();
 			
 			List<NetworkHop> path = new ArrayList<NetworkHop>((nodes.size() - 2) * 2);
-			
-			for(int n = 1; n < nodes.size() - 1; n++){
+			int involvedNodes = nodes.size() - 1;
+			for(int n = 1; n < involvedNodes; n++){
 				NetworkLink inboundLink = links.get(n-1), outboundLink = links.get(n);
 				NetworkNode ofswitch = nodes.get(n);
 				Integer inPort = -1, outPort = -1;
@@ -185,7 +185,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				else
 					outPort = outboundLink.getNodeBPortNumber();
 				
-				path.add(new NetworkHop(ofswitch, inPort, outPort));
+				path.add(new NetworkHop((NetworkHost)nodes.get(0), (NetworkHost)nodes.get(involvedNodes), ofswitch, inPort, outPort));
 			}
 			
 			this.printNetworkPath(origin, destination, path);

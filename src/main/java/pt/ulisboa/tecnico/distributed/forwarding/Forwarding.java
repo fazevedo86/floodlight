@@ -265,6 +265,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
 		if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
 			Forwarding.log.info("Performing distributed forwarding!");
+			src = path.get(0).getSourceHost();
+			dst = path.get(0).getDestinationHost();
 			final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
 			this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
 			
@@ -552,7 +554,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			IPv4Address srcIp = IPv4Address.of(src.getIPAddress());
 			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 			
-			if( (!srcIp.equals(IPv4Address.NONE)) && (!dstIp.equals(IPv4Address.NONE)) && (fpr.getEtherType().equals(EthType.IPv4)) ){
+			if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) && (fpr.getEtherType().equals(EthType.IPv4)) ){
 				// Match IP header fields
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
 				.setExact(MatchField.IPV4_SRC, srcIp)

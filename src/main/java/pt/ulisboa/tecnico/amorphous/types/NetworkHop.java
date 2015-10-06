@@ -7,13 +7,25 @@ public class NetworkHop implements Serializable, Comparable<NetworkNode> {
 	private static final long serialVersionUID = -897369719368788462L;
 
 	private final NetworkNode ofswitch;
+	private final NetworkHost origin;
+	private final NetworkHost destination;
 	private final Integer inboundSwitchPort;
 	private final Integer outboundSwitchPort;
 	
-	public NetworkHop(NetworkNode OFSwitch, Integer InboundSwitchPort, Integer OutboundSwitchPort) {
+	public NetworkHop(NetworkHost SourceHost, NetworkHost Targethost, NetworkNode OFSwitch, Integer InboundSwitchPort, Integer OutboundSwitchPort) {
+		this.origin = SourceHost;
+		this.destination = Targethost;
 		this.ofswitch = OFSwitch;
 		this.inboundSwitchPort = InboundSwitchPort;
 		this.outboundSwitchPort = OutboundSwitchPort;
+	}
+	
+	public NetworkHost getSourceHost(){
+		return this.origin;
+	}
+	
+	public NetworkHost getDestinationHost(){
+		return this.destination;
 	}
 	
 	public NetworkNode getSwitch(){
