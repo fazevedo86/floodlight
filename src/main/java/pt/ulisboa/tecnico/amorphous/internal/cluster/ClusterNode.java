@@ -5,13 +5,16 @@
 
 package pt.ulisboa.tecnico.amorphous.internal.cluster;
 
+import java.io.Serializable;
 import java.net.InetAddress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ClusterNode {
-	
+public class ClusterNode implements Serializable {
+
+	private static final long serialVersionUID = -7548328281868226699L;
+
 	protected static final Logger logger = LoggerFactory.getLogger(ClusterNode.class);
 	
 	private final InetAddress ip;
