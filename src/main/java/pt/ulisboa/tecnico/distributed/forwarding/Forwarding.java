@@ -578,6 +578,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 					.setExact(MatchField.IPV4_DST, dstIp);
 				} else {
 					Forwarding.log.error("Detected an IPv4 flow but was unable to determine IP Addresses: src=" + srcIp + " dst=" + dstIp);
+					Forwarding.log.error("IP Addresses imported from: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
 				}
 	
 				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {
