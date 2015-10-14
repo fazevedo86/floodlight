@@ -73,7 +73,7 @@ public class FlowProgrammingRequest implements IAmorphStateMessage<NetworkHop> {
 	
 	public void setDestinationTransportPort(Integer DestinationTransportPort){
 		if(DestinationTransportPort >= 0 && DestinationTransportPort <= 65535){
-			this.srcPort = DestinationTransportPort;
+			this.dstPort = DestinationTransportPort;
 		}
 	}
 	
