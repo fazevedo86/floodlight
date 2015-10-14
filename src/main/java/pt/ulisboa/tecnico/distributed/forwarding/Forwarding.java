@@ -277,9 +277,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		// Update topology if need be
 		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-		this.amorphTopologyManagerService.updateLocalHost(srcHost);
+		this.amorphTopologyManagerService.addLocalHost(srcHost);
 		if (dstHost != null) {
-			this.amorphTopologyManagerService.updateLocalHost(dstHost);
+			this.amorphTopologyManagerService.addLocalHost(srcHost);
 		}
 		
 		// Distributed network path
@@ -586,12 +586,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 					Forwarding.log.error("Detected an IPv4 flow but was unable to use IP Addresses: src=" + srcIp + " dst=" + dstIp);
 				}
 	
-				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {
+				IpProtocol ipproto = IpProtocol.of(fpr.getIPProtocol());
+				if (ipproto.equals(IpProtocol.TCP)) {
 					// Match TCP header fields
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
 					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
 					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
-				} else if (fpr.getIPProtocol() == IpProtocol.UDP.getIpProtocolNumber()) {
+				} else if (ipproto.equals(IpProtocol.UDP)) {
 					// Match UDP header fields
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
 					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
