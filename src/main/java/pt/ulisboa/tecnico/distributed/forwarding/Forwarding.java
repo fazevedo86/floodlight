@@ -251,6 +251,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				srcPort = FlowProgrammingRequest.INFO_NOT_SET, dstPort = FlowProgrammingRequest.INFO_NOT_SET;
 		Short IPProto = FlowProgrammingRequest.INFO_NOT_SET;
 		
+		Forwarding.log.info("Processing new Flow: etherType=" + eth.getEtherType().getValue());
+		
 		if(eth.getEtherType().equals(Ethernet.TYPE_IPv4)){
 			ipPacket = (IPv4)eth.getPayload();
 			srcIP = ipPacket.getSourceAddress().getInt();
@@ -267,19 +269,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			}
 			
 			Forwarding.log.info("Processing new IPv4 Flow: src=" + srcIP + " dst=" + dstIP);
-		} else {
-			Forwarding.log.info("Processing new non-IPv4 (ether=" + eth.getEtherType().getValue() + ")  Flow: src=" + eth.getSourceMACAddress() + " dst=" + eth.getDestinationMACAddress());
 		}
+		
 		NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
 		NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
 		
-		// Update topology if needed
-		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-		this.amorphTopologyManagerService.updateLocalHost(srcHost);
-		if (dstHost != null) {
-			this.amorphTopologyManagerService.updateLocalHost(dstHost);
-		}
+		// Update topology if need be
+//		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+//		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+//		this.amorphTopologyManagerService.updateLocalHost(srcHost);
+//		if (dstHost != null) {
+//			this.amorphTopologyManagerService.updateLocalHost(dstHost);
+//		}
 		
 		// Distributed network path
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
@@ -575,7 +576,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 			
 			if(fpr.getEtherType().equals(EthType.IPv4)){
-				Forwarding.log.error("IPv4 Flow detected: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
+				Forwarding.log.infoF("IPv4 Flow detected: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
 				if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) ){
 					// Match IP header fields
