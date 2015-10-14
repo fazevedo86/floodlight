@@ -571,14 +571,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 			
 			if(fpr.getEtherType().equals(EthType.IPv4)){
+				Forwarding.log.error("IPv4 Flow detected: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
 				if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) ){
 					// Match IP header fields
 					mb.setExact(MatchField.IPV4_SRC, srcIp)
 					.setExact(MatchField.IPV4_DST, dstIp);
 				} else {
-					Forwarding.log.error("Detected an IPv4 flow but was unable to determine IP Addresses: src=" + srcIp + " dst=" + dstIp);
-					Forwarding.log.error("IP Addresses imported from: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
+					Forwarding.log.error("Detected an IPv4 flow but was unable to use IP Addresses: src=" + srcIp + " dst=" + dstIp);
 				}
 	
 				if (fpr.getIPProtocol() == IpProtocol.TCP.getIpProtocolNumber()) {

@@ -438,9 +438,11 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 			Integer IPAddress = Host.getIPv4Addresses()[0].getInt();
 			
-			for(IPv4Address ip : Host.getIPv4Addresses())
-				if( (!ip.equals(IPv4Address.NONE)) && (!ip.isBroadcast()))
+			for(IPv4Address ip : Host.getIPv4Addresses()){
+				int rawip = ip.getInt();
+				if(rawip > 0)
 					IPAddress = ip.getInt();
+			}
 			
 			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), IPAddress);
 			
@@ -537,11 +539,14 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			return this.removeLocalHost(Host);
 		} else {
 			NetworkHost host = this.localHosts.get(Host.getDeviceKey());
-			for(IPv4Address IPAddress : Host.getIPv4Addresses())
-				if( (!IPAddress.equals(IPv4Address.NONE)) && (!IPAddress.isBroadcast()) && (IPAddress.getInt() != host.getIPAddress()) ){					
+			int rawip = Host.getIPv4Addresses()[0].getInt();
+			for(IPv4Address IPAddress : Host.getIPv4Addresses()){
+				rawip = IPAddress.getInt();
+				if( (rawip > 0) && (rawip != host.getIPAddress()) ){
 					this.removeLocalHost(Host);
-					this.addLocalHost(Host);
+					return this.addLocalHost(Host);
 				}
+			}
 		}
 		
 		return false;
