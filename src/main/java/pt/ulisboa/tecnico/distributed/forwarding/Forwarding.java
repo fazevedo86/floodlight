@@ -469,7 +469,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	protected void sendForwardRequest(FlowProgrammingRequest fpr){
 		try {
 			this.amorphGlobalStateService.queueSyncMessage(Forwarding.class.getName(), fpr, this.amorphTopologyService.getSwitchManager(fpr.getNetworkHop().getSwitch()), null);
-			this.distributedFlowDependencies.get(fpr.getCookie()).add(fpr.getNetworkHop().getSwitch().getNodeId());
+			try{
+				this.distributedFlowDependencies.get(fpr.getCookie()).add(fpr.getNetworkHop().getSwitch().getNodeId());
+			} catch(NullPointerException e){
+				Forwarding.log.error("Failed to add dependency for flow " + fpr.getCookie() + ": " + e.getMessage());
+			}
 		} catch (InvalidAmorphSyncQueueException e) {
 			Forwarding.log.error("Failed to add a " + FlowProgrammingRequest.class.getSimpleName() + " message to my Amorphous queue!");
 		}
