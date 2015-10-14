@@ -267,6 +267,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			}
 			
 			Forwarding.log.info("Processing new IPv4 Flow: src=" + srcIP + " dst=" + dstIP);
+		} else {
+			Forwarding.log.info("Processing new non-IPv4 (ether=" + eth.getEtherType().getValue() + ")  Flow: src=" + eth.getSourceMACAddress() + " dst=" + eth.getDestinationMACAddress());
 		}
 		NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
 		NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
