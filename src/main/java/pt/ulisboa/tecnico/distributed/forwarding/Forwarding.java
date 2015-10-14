@@ -576,7 +576,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			IPv4Address dstIp = IPv4Address.of(dst.getIPAddress());
 			
 			if(fpr.getEtherType().equals(EthType.IPv4)){
-				Forwarding.log.infoF("IPv4 Flow detected: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
+				Forwarding.log.info("IPv4 Flow detected: src=" + src.getIPAddress() + " dst=" + dst.getIPAddress());
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
 				if((!srcIp.equals(IPv4Address.NONE)) && (!srcIp.isBroadcast()) && (!dstIp.equals(IPv4Address.NONE)) && (!dstIp.isBroadcast()) ){
 					// Match IP header fields
