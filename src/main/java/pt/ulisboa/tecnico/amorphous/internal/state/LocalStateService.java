@@ -546,7 +546,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 				int rawip = Host.getIPv4Addresses()[0].getInt();
 				for(IPv4Address IPAddress : Host.getIPv4Addresses()){
 					rawip = IPAddress.getInt();
-					if( (rawip > 0) && (rawip != host.getIPAddress()) ){
+					if( (rawip > 0) && ( (host.getIPAddress() == null) || (rawip != host.getIPAddress()) ) ){
 						this.removeLocalHost(Host);
 						return this.addLocalHost(Host);
 					}
