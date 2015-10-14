@@ -268,19 +268,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				dstPort = transportPacket.getDestinationPort().getPort();
 			}
 			
-			Forwarding.log.info("Processing new IPv4 Flow: src=" + srcIP + " dst=" + dstIP);
+			Forwarding.log.info("Processing new IPv4 Flow (proto=" + IPProto + "): src=" + srcIP + " dst=" + dstIP);
 		}
 		
 		NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
 		NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
 		
 		// Update topology if need be
-//		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-//		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-//		this.amorphTopologyManagerService.updateLocalHost(srcHost);
-//		if (dstHost != null) {
-//			this.amorphTopologyManagerService.updateLocalHost(dstHost);
-//		}
+		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+		this.amorphTopologyManagerService.updateLocalHost(srcHost);
+		if (dstHost != null) {
+			this.amorphTopologyManagerService.updateLocalHost(dstHost);
+		}
 		
 		// Distributed network path
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
