@@ -288,7 +288,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			Forwarding.log.info("Performing distributed forwarding!");
 //			src = path.get(0).getSourceHost();
 //			dst = path.get(0).getDestinationHost();
-			final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
+			Integer flowid = src.hashCode() + dst.hashCode() + eth.getEtherType().getValue();
+			if(IPProto != -1){
+				flowid += IPProto + srcPort + dstPort;
+			}
+			final U64 cookie = AppCookie.makeCookie(flowid, 1);
 			this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
 			
 			for(int i = 1; i < path.size(); i++){
