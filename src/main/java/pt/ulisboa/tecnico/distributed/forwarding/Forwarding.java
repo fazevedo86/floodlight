@@ -586,17 +586,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 					Forwarding.log.error("Detected an IPv4 flow but was unable to use IP Addresses: src=" + srcIp + " dst=" + dstIp);
 				}
 	
-				IpProtocol ipproto = IpProtocol.of(fpr.getIPProtocol());
-				if (ipproto.equals(IpProtocol.TCP)) {
+				if(fpr.getIPProtocol() == 6){ // Requires better solution
 					// Match TCP header fields
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
 					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
 					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
-				} else if (ipproto.equals(IpProtocol.UDP)) {
+				} else if (fpr.getIPProtocol() == 11) {
 					// Match UDP header fields
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
 					.setExact(MatchField.TCP_SRC, TransportPort.of(fpr.getSourceTransportPort()))
 					.setExact(MatchField.TCP_DST, TransportPort.of(fpr.getDestinationTransportPort()));
+					} else {
+						Forwarding.log.error("Detected an IPv4 flow but was unable to determine IP protocol: IPproto=" + fpr.getIPProtocol());
 					}
 			} else if (fpr.getEtherType().equals(EthType.ARP)) {
 				// Match ARP header field
