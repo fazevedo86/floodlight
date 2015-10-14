@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +13,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
@@ -60,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import pt.ulisboa.tecnico.amorphous.IAmorphTopologyService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService;
 import pt.ulisboa.tecnico.amorphous.internal.IAmorphGlobalStateService.SyncType;
+import pt.ulisboa.tecnico.amorphous.internal.IAmorphTopologyManagerService;
 import pt.ulisboa.tecnico.amorphous.internal.state.ISyncQueueListener;
 import pt.ulisboa.tecnico.amorphous.internal.state.InvalidAmorphSyncQueueException;
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.IAmorphStateMessage;
@@ -74,6 +77,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
 	protected IAmorphTopologyService amorphTopologyService;
+	protected IAmorphTopologyManagerService amorphTopologyManagerService;
 	protected IAmorphGlobalStateService amorphGlobalStateService;
 	protected Map<U64, ArrayList<Long>> distributedFlowDependencies;
 	
@@ -102,8 +106,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		l.add(ITopologyService.class);
 		l.add(IDebugCounterService.class); // TODO Do I need it?
 		l.add(IOFSwitchService.class);
+		
 		l.add(IAmorphTopologyService.class);
 		l.add(IAmorphGlobalStateService.class);
+		l.add(IAmorphTopologyManagerService.class);
+		
 		return l;
 	}
 
@@ -119,6 +126,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		
 		this.distributedFlowDependencies = new ConcurrentHashMap<U64, ArrayList<Long>>();
 		this.amorphTopologyService = context.getServiceImpl(IAmorphTopologyService.class);
+		this.amorphTopologyManagerService = context.getServiceImpl(IAmorphTopologyManagerService.class);
 		this.amorphGlobalStateService = context.getServiceImpl(IAmorphGlobalStateService.class);
 		try {
 			this.amorphGlobalStateService.registerSyncQueue(Forwarding.class.getName(), SyncType.GUARANTEED, this);
@@ -261,12 +269,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		NetworkHost src = new NetworkHost(eth.getSourceMACAddress().getLong(), eth.getSourceMACAddress().toString(), Short.valueOf(eth.getVlanID()), srcIP);
 		NetworkHost dst = new NetworkHost(eth.getDestinationMACAddress().getLong(), eth.getDestinationMACAddress().toString(), Short.valueOf(eth.getVlanID()), dstIP);
 		
+		// Update topology if needed
+		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+		this.amorphTopologyManagerService.updateLocalHost(srcHost);
+		if (dstHost != null) {
+			this.amorphTopologyManagerService.updateLocalHost(dstHost);
+		}
+		
 		// Distributed network path
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
 		if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
 			Forwarding.log.info("Performing distributed forwarding!");
-			src = path.get(0).getSourceHost();
-			dst = path.get(0).getDestinationHost();
+//			src = path.get(0).getSourceHost();
+//			dst = path.get(0).getDestinationHost();
 			final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
 			this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
 			
@@ -313,6 +329,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			}).start();
 			
 		} else {
+			// Follow the standard process
 			OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 			// Check if we have the location of the destination
 			IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
