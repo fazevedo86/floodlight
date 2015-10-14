@@ -436,12 +436,14 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		
 		if(Host.getAttachmentPoints().length == 1){
 		
-			Integer IPAddress = Host.getIPv4Addresses()[0].getInt();
-			
-			for(IPv4Address ip : Host.getIPv4Addresses()){
-				int rawip = ip.getInt();
-				if(rawip > 0)
-					IPAddress = ip.getInt();
+			Integer IPAddress = -1;
+			if(Host.getIPv4Addresses().length > 0){
+				IPAddress = Host.getIPv4Addresses()[0].getInt();
+				for(IPv4Address ip : Host.getIPv4Addresses()){
+					int rawip = ip.getInt();
+					if(rawip > 0)
+						IPAddress = ip.getInt();
+				}
 			}
 			
 			NetworkHost host = new NetworkHost(Host.getMACAddress().getLong(), Host.getMACAddressString(), Host.getVlanId()[0].getVlan(), IPAddress);
@@ -539,12 +541,14 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			return this.removeLocalHost(Host);
 		} else {
 			NetworkHost host = this.localHosts.get(Host.getDeviceKey());
-			int rawip = Host.getIPv4Addresses()[0].getInt();
-			for(IPv4Address IPAddress : Host.getIPv4Addresses()){
-				rawip = IPAddress.getInt();
-				if( (rawip > 0) && (rawip != host.getIPAddress()) ){
-					this.removeLocalHost(Host);
-					return this.addLocalHost(Host);
+			if(Host.getIPv4Addresses().length > 0){
+				int rawip = Host.getIPv4Addresses()[0].getInt();
+				for(IPv4Address IPAddress : Host.getIPv4Addresses()){
+					rawip = IPAddress.getInt();
+					if( (rawip > 0) && (rawip != host.getIPAddress()) ){
+						this.removeLocalHost(Host);
+						return this.addLocalHost(Host);
+					}
 				}
 			}
 		}
