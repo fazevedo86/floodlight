@@ -542,15 +542,19 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			return this.removeLocalHost(Host);
 		} else {
 			NetworkHost host = this.localHosts.get(Host.getDeviceKey());
-			if(Host.getIPv4Addresses().length > 0){
-				int rawip = Host.getIPv4Addresses()[0].getInt();
-				for(IPv4Address IPAddress : Host.getIPv4Addresses()){
-					rawip = IPAddress.getInt();
-					if( (rawip > 0) && ( (host.getIPAddress() == null) || (rawip != host.getIPAddress()) ) ){
-						this.removeLocalHost(Host);
-						return this.addLocalHost(Host);
+			if(host != null){
+				if(Host.getIPv4Addresses().length > 0){
+					int rawip = Host.getIPv4Addresses()[0].getInt();
+					for(IPv4Address IPAddress : Host.getIPv4Addresses()){
+						rawip = IPAddress.getInt();
+						if( (rawip > 0) && ( (host.getIPAddress() == null) || (rawip != host.getIPAddress()) ) ){
+							this.removeLocalHost(Host);
+							return this.addLocalHost(Host);
+						}
 					}
 				}
+			} else {
+				this.addLocalHost(Host);
 			}
 		}
 		
