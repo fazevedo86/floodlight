@@ -653,7 +653,6 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 
 				// Register locally managed nodes
 				newGraph.addVertex(ofswitch);
-				SwitchAffinity.put(ofswitch, myID);
 			}
 			
 			// Update the network graph with links for local nodes
