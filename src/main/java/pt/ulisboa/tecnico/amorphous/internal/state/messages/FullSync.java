@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.amorphous.internal.state.messages;
 
-import java.net.InetAddress;
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.jgrapht.graph.WeightedMultigraph;
@@ -16,12 +15,12 @@ public class FullSync implements IAmorphStateMessage {
 	
 	private final Map<NetworkNode, String> switchAffinity;
 	protected final WeightedMultigraph<NetworkNode, NetworkLink> networkGraph;
-	protected final Collection<ClusterNode> nodes;
+	protected final HashSet<ClusterNode> nodes;
 //	protected final Map<Class<? extends IFloodlightModule>, Serializable> networkPolicies;
 	
 //	private final Map<String, Integer> vectorClock;
 	
-	public FullSync(Map<NetworkNode, String> SwitchAffinity, WeightedMultigraph<NetworkNode, NetworkLink> NetworkGraph, Collection<ClusterNode> ClusterNodes) {
+	public FullSync(Map<NetworkNode, String> SwitchAffinity, WeightedMultigraph<NetworkNode, NetworkLink> NetworkGraph, HashSet<ClusterNode> ClusterNodes) {
 		this.switchAffinity = SwitchAffinity;
 		this.networkGraph = NetworkGraph;
 		this.nodes = ClusterNodes;
@@ -60,7 +59,7 @@ public class FullSync implements IAmorphStateMessage {
 		return this.networkGraph;
 	}
 	
-	public Collection<ClusterNode> getClusterNodes(){
+	public HashSet<ClusterNode> getClusterNodes(){
 		return this.nodes;
 	}
 

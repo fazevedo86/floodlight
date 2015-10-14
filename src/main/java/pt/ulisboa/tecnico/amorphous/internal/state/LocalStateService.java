@@ -619,6 +619,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		String localNodeID = ClusterService.getInstance().getNodeId();
 		WeightedMultigraph<NetworkNode, NetworkLink> NetworkGraph = new WeightedMultigraph<NetworkNode, NetworkLink>(NetworkLink.class);
 		Map<NetworkNode, String> switchAffinity = new ConcurrentHashMap<NetworkNode, String>(this.remoteSwitchAffinity);
+		HashSet<ClusterNode> ClusterNodes = new HashSet<ClusterNode>();
 		
 		// add local switches with local node id
 		for(NetworkNode ofswitch : this.localSwitches.keySet()){
@@ -634,8 +635,10 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			NetworkGraph.addEdge(this.networkGraph.getEdgeSource(link), this.networkGraph.getEdgeTarget(link), link);
 			NetworkGraph.setEdgeWeight(link, this.networkGraph.getEdgeWeight(link));
 		}
+		
+		ClusterNodes.addAll(ClusterService.getInstance().getClusterNodes());
 
-		return new FullSync(switchAffinity, NetworkGraph, ClusterService.getInstance().getClusterNodes());		
+		return new FullSync(switchAffinity, NetworkGraph, ClusterNodes);		
 	}
 	
 	public synchronized void setFullClusterState(FullSync fullSync){
