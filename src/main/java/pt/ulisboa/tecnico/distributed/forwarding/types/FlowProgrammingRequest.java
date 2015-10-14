@@ -62,24 +62,18 @@ public class FlowProgrammingRequest implements IAmorphStateMessage<NetworkHop> {
 	}
 	
 	public void setIPProtocol(Short IPProto){
-		if(this.ipProto.equals(FlowProgrammingRequest.INFO_NOT_SET)){
-			this.ipProto = IPProto;
-		}
+		this.ipProto = IPProto;
 	}
 	
 	public void setSourceTransportPort(Integer SourceTransportPort){
-		if(this.srcPort.equals(FlowProgrammingRequest.INFO_NOT_SET)){
-			if(SourceTransportPort >= 0 && SourceTransportPort <= 65535){
-				this.srcPort = SourceTransportPort;
-			}
+		if(SourceTransportPort >= 0 && SourceTransportPort <= 65535){
+			this.srcPort = SourceTransportPort;
 		}
 	}
 	
 	public void setDestinationTransportPort(Integer DestinationTransportPort){
-		if(this.srcPort.equals(FlowProgrammingRequest.INFO_NOT_SET)){
-			if(DestinationTransportPort >= 0 && DestinationTransportPort <= 65535){
-				this.srcPort = DestinationTransportPort;
-			}
+		if(DestinationTransportPort >= 0 && DestinationTransportPort <= 65535){
+			this.srcPort = DestinationTransportPort;
 		}
 	}
 	
