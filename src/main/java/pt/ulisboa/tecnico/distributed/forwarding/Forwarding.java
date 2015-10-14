@@ -79,7 +79,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	protected IAmorphTopologyService amorphTopologyService;
 	protected IAmorphTopologyManagerService amorphTopologyManagerService;
 	protected IAmorphGlobalStateService amorphGlobalStateService;
-	protected Map<U64, ArrayList<Long>> distributedFlowDependencies;
+	protected Map<Integer, ArrayList<Long>> distributedFlowDependencies;
 	
 	//------------------------------------------------------------------------
 	//							IAmorphousClusterService
@@ -124,7 +124,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		this.debugCounterService = context.getServiceImpl(IDebugCounterService.class); // TODO Do I need it?
 		this.switchService = context.getServiceImpl(IOFSwitchService.class);
 		
-		this.distributedFlowDependencies = new ConcurrentHashMap<U64, ArrayList<Long>>();
+		this.distributedFlowDependencies = new ConcurrentHashMap<Integer, ArrayList<Long>>();
 		this.amorphTopologyService = context.getServiceImpl(IAmorphTopologyService.class);
 		this.amorphTopologyManagerService = context.getServiceImpl(IAmorphTopologyManagerService.class);
 		this.amorphGlobalStateService = context.getServiceImpl(IAmorphGlobalStateService.class);
@@ -286,18 +286,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
 		if(!path.isEmpty() && this.amorphTopologyService.isSwitchManagedLocally(path.get(0).getSwitch())){
 			Forwarding.log.info("Performing distributed forwarding!");
-//			src = path.get(0).getSourceHost();
-//			dst = path.get(0).getDestinationHost();
+			
 			Integer flowid = src.hashCode() + dst.hashCode() + eth.getEtherType().getValue();
 			if(IPProto != -1){
 				flowid += IPProto + srcPort + dstPort;
 			}
-			final U64 cookie = AppCookie.makeCookie(flowid, 1);
-			this.distributedFlowDependencies.put(cookie, new ArrayList<Long>(path.size() - 1));
+			this.distributedFlowDependencies.put(flowid, new ArrayList<Long>(path.size() - 1));
+
+			final U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 1);
 			
 			for(int i = 1; i < path.size(); i++){
 				// Generate Flow Programming Request
-				FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(i), src, dst, eth.getEtherType());
+				FlowProgrammingRequest fpr = new FlowProgrammingRequest(flowid, cookie, path.get(i), src, dst, eth.getEtherType());
 				fpr.setIPProtocol(IPProto);
 				fpr.setSourceTransportPort(srcPort);
 				fpr.setDestinationTransportPort(dstPort);
@@ -313,7 +313,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 			// Program flow on origin ofswitch
 			final OFPacketIn pin = pi;
 			final FloodlightContext ctx = cntx;
-			final FlowProgrammingRequest fpr = new FlowProgrammingRequest(cookie, path.get(0), src, dst, eth.getEtherType());
+			final FlowProgrammingRequest fpr = new FlowProgrammingRequest(flowid, cookie, path.get(0), src, dst, eth.getEtherType());
 			fpr.setIPProtocol(IPProto);
 			fpr.setSourceTransportPort(srcPort);
 			fpr.setDestinationTransportPort(dstPort);
@@ -322,7 +322,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 				@Override
 				public void run(){
 					// Wait for all dependencies to be met
-					while(Forwarding.this.distributedFlowDependencies.containsKey(cookie) && Forwarding.this.distributedFlowDependencies.get(cookie).size() > 0){
+					while(Forwarding.this.distributedFlowDependencies.containsKey(fpr.getFlowId()) && Forwarding.this.distributedFlowDependencies.get(fpr.getFlowId()).size() > 0){
 						// Sleep it out
 						try {
 							Thread.sleep(5);
@@ -333,7 +333,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 					// Program flow on origin switch
 					Forwarding.this.processFlowProgrammingRequest(fpr, pin, ctx);
 					
-					Forwarding.this.distributedFlowDependencies.remove(cookie);
+					Forwarding.this.distributedFlowDependencies.remove(fpr.getFlowId());
 				}
 			}).start();
 			
@@ -462,19 +462,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 	
 	protected void receiveFlowProgrammingConfirmation(FlowProgrammingConfirmation message){
 		Forwarding.log.info("Received a " + FlowProgrammingConfirmation.class.getSimpleName() + " message!");
-		if(this.distributedFlowDependencies.containsKey(message.getCookie())){
-			this.distributedFlowDependencies.get(message.getCookie()).remove(message.getRawDatapathId());
+		if(this.distributedFlowDependencies.containsKey(message.getFlowId())){
+			this.distributedFlowDependencies.get(message.getFlowId()).remove(message.getRawDatapathId());
 		}
 		
 		if(!message.isSuccessfullyProgrammed())
-			Forwarding.log.warn("Flow " + message.getCookie() + " could not be programmed on node " + DatapathId.of(message.getRawDatapathId()));
+			Forwarding.log.warn("Flow " + message.getFlowId() + " could not be programmed on node " + DatapathId.of(message.getRawDatapathId()));
 	}
 	
 	protected void sendForwardRequest(FlowProgrammingRequest fpr){
 		try {
 			this.amorphGlobalStateService.queueSyncMessage(Forwarding.class.getName(), fpr, this.amorphTopologyService.getSwitchManager(fpr.getNetworkHop().getSwitch()), null);
 			try{
-				this.distributedFlowDependencies.get(fpr.getCookie()).add(fpr.getNetworkHop().getSwitch().getNodeId());
+				this.distributedFlowDependencies.get(fpr.getFlowId()).add(fpr.getNetworkHop().getSwitch().getNodeId());
 			} catch(NullPointerException e){
 				Forwarding.log.error("Failed to add dependency for flow " + fpr.getCookie() + ": " + e.getMessage());
 			}
@@ -488,7 +488,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		
 		boolean success = this.processFlowProgrammingRequest(request, null, null);
 		
-		FlowProgrammingConfirmation fpc = new FlowProgrammingConfirmation(request.getCookie(), request.getNetworkHop().getSwitch().getNodeId(), success);
+		FlowProgrammingConfirmation fpc = new FlowProgrammingConfirmation(request.getFlowId(), request.getNetworkHop().getSwitch().getNodeId(), success);
 		try {
 			this.amorphGlobalStateService.queueSyncMessage(Forwarding.class.getName(), fpc, this.amorphTopologyService.getSwitchManager(request.getNetworkHop().getSwitch()), null);
 		} catch (InvalidAmorphSyncQueueException e) {

@@ -6,16 +6,16 @@ import org.projectfloodlight.openflow.types.U64;
 
 import pt.ulisboa.tecnico.amorphous.internal.state.messages.IAmorphStateMessage;
 
-public class FlowProgrammingConfirmation implements IAmorphStateMessage<Long> {
+public class FlowProgrammingConfirmation implements IAmorphStateMessage<Integer> {
 
 	private static final long serialVersionUID = -7899428888564668647L;
 
-	protected final Long rawCookie;
+	protected final Integer flowId;
 	protected final Long rawDatapathId;
 	protected final Boolean success;
 	
-	public FlowProgrammingConfirmation(U64 cookie, Long rawDatapathId, Boolean SuccessfullyProgrammed) {
-		this.rawCookie = cookie.getValue();
+	public FlowProgrammingConfirmation(Integer FlowId, Long rawDatapathId, Boolean SuccessfullyProgrammed) {
+		this.flowId = FlowId;
 		this.rawDatapathId = rawDatapathId;
 		this.success = SuccessfullyProgrammed;
 	}
@@ -36,17 +36,17 @@ public class FlowProgrammingConfirmation implements IAmorphStateMessage<Long> {
 	}
 
 	@Override
-	public Class<Long> getPayloadType() {
-		return Long.class;
+	public Class<Integer> getPayloadType() {
+		return Integer.class;
 	}
 
 	@Override
-	public Long getPayload() {
-		return this.rawCookie;
+	public Integer getPayload() {
+		return this.flowId;
 	}
 	
-	public U64 getCookie(){
-		return U64.of(this.rawCookie);
+	public Integer getFlowId(){
+		return this.flowId;
 	}
 	
 	public Long getRawDatapathId(){

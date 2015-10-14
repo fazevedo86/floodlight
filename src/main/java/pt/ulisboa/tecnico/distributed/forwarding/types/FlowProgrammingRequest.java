@@ -15,6 +15,7 @@ public class FlowProgrammingRequest implements IAmorphStateMessage<NetworkHop> {
 	
 	private static final long serialVersionUID = -4529388828518392204L;
 
+	protected final Integer flowid;
 	protected final Long rawCookie;
 	protected final NetworkHop hop;
 	protected final NetworkHost src;
@@ -24,7 +25,8 @@ public class FlowProgrammingRequest implements IAmorphStateMessage<NetworkHop> {
 	protected Integer srcPort;
 	protected Integer dstPort;
 	
-	public FlowProgrammingRequest(U64 cookie, NetworkHop networkHop, NetworkHost sourceHost, NetworkHost destinationHost, EthType ethernetType) {
+	public FlowProgrammingRequest(Integer FlowId, U64 cookie, NetworkHop networkHop, NetworkHost sourceHost, NetworkHost destinationHost, EthType ethernetType) {
+		this.flowid = FlowId;
 		this.rawCookie = cookie.getValue();
 		this.hop = networkHop;
 		this.src = sourceHost;
@@ -75,6 +77,10 @@ public class FlowProgrammingRequest implements IAmorphStateMessage<NetworkHop> {
 		if(DestinationTransportPort >= 0 && DestinationTransportPort <= 65535){
 			this.dstPort = DestinationTransportPort;
 		}
+	}
+	
+	public Integer getFlowId(){
+		return this.flowid;
 	}
 	
 	public U64 getCookie(){
