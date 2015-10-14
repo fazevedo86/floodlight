@@ -253,7 +253,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		
 		Forwarding.log.info("Processing new Flow: etherType=" + eth.getEtherType().getValue());
 		
-		if(eth.getEtherType().equals(Ethernet.TYPE_IPv4)){
+		if(eth.getEtherType().equals(EthType.IPv4)){
 			ipPacket = (IPv4)eth.getPayload();
 			srcIP = ipPacket.getSourceAddress().getInt();
 			dstIP = ipPacket.getDestinationAddress().getInt();
