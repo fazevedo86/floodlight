@@ -160,7 +160,7 @@ public class ClusterService extends Thread implements IAmorphousClusterService {
 	
 	//------------------------------------------------------------------------
 	
-	private boolean addClusterNode(ClusterNode node) {
+	public boolean addClusterNode(ClusterNode node) {
 		if(this.isClusterNode(node)){
 			ClusterNode existingNode = this.nodes.get(node.getNodeIP());
 			if(!existingNode.getNodeID().equals(node.getNodeID())){

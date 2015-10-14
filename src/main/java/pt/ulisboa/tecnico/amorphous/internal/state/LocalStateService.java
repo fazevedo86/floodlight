@@ -11,6 +11,7 @@
 package pt.ulisboa.tecnico.amorphous.internal.state;
 
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -634,17 +635,17 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 			NetworkGraph.setEdgeWeight(link, this.networkGraph.getEdgeWeight(link));
 		}
 
-		return new FullSync(switchAffinity, NetworkGraph);		
+		return new FullSync(switchAffinity, NetworkGraph, ClusterService.getInstance().getClusterNodes());		
 	}
 	
 	public synchronized void setFullClusterState(FullSync fullSync){
-		LocalStateService.logger.info("Processing FullSync from node " + fullSync.getOriginatingNodeId());
+		LocalStateService.logger.info("Processing FullSync");
 		String myID = ClusterService.getInstance().getNodeId();
 		WeightedMultigraph<NetworkNode, NetworkLink> newGraph = fullSync.getNetworkGraph();
 		Map<NetworkNode, String> SwitchAffinity = fullSync.getSwitchAffinityMap();
 		
 		// Merge reliable data
-		if(!this.networkGraph.edgeSet().isEmpty()){
+		if(!this.networkGraph.vertexSet().isEmpty()){
 			// Update the data structures with local nodes
 			for(NetworkNode ofswitch : this.localSwitches.keySet()){
 				// Cleanup
@@ -653,6 +654,12 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 
 				// Register locally managed nodes
 				newGraph.addVertex(ofswitch);
+			}
+			
+			ClusterService cs = (ClusterService)ClusterService.getInstance();
+			for(ClusterNode node : fullSync.getClusterNodes()){
+				if(SwitchAffinity.containsValue(node.getNodeID()))
+					cs.addClusterNode(node);
 			}
 			
 			// Update the network graph with links for local nodes
@@ -678,7 +685,7 @@ public class LocalStateService implements IAmorphTopologyService, IAmorphTopolog
 		this.remoteSwitchAffinity = SwitchAffinity;
 		
 		this.printNetworkGraph();
-		LocalStateService.logger.info("Local data structures imported from node " + fullSync.getOriginatingNodeId());
+		LocalStateService.logger.info("Local data structures imported");
 	}
 
 	public void printNetworkPath(NetworkHost origin, NetworkHost destination, List<NetworkHop> path){
