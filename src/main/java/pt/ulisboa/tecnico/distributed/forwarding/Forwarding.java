@@ -277,10 +277,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, ISy
 		// Update topology if need be
 		IDevice srcHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 		IDevice dstHost = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-		this.amorphTopologyManagerService.addLocalHost(srcHost);
-		if (dstHost != null) {
-			this.amorphTopologyManagerService.addLocalHost(srcHost);
-		}
+//		this.amorphTopologyManagerService.addLocalHost(srcHost);
+//		if (dstHost != null) {
+//			this.amorphTopologyManagerService.addLocalHost(srcHost);
+//		}
 		
 		// Distributed network path
 		List<NetworkHop> path = this.amorphTopologyService.getNetworkPath(src, dst);
